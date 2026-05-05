@@ -2,3 +2,4 @@
 .claude/
 .code-review-graph/
 node_modules/
+.playwright-mcp/
