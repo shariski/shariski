@@ -118,7 +118,7 @@ ensuring regulatory alignment without breaking financial reporting.
 Kerf — Typing Platform for Split-Keyboard Transitioners
 </h3>
 <p class="text-slate-400 leading-relaxed mb-4">
-Live at <a href="https://typekerf.com" target="_blank" class="text-sky-400 hover:underline">typekerf.com</a>.
+Live at <a href="https://typekerf.com" target="_blank" rel="noopener noreferrer" class="text-sky-400 hover:underline">typekerf.com</a>.
 A pure-TypeScript adaptive engine sits beneath a React shell — finger-assignment resolver,
 weakness scoring, target selection, and split-specific metrics, all framework-agnostic.
 Designed and shipped solo through a structured Claude Code workflow.
@@ -193,7 +193,7 @@ Email copied to clipboard.
 
 <script>
 const reveals = document.querySelectorAll(".reveal");
-window.addEventListener("scroll", () => {
+function checkReveals() {
   reveals.forEach(el => {
     const windowHeight = window.innerHeight;
     const elementTop = el.getBoundingClientRect().top;
@@ -201,7 +201,9 @@ window.addEventListener("scroll", () => {
       el.classList.add("active");
     }
   });
-});
+}
+window.addEventListener("scroll", checkReveals);
+window.addEventListener("DOMContentLoaded", checkReveals);
 
 function copyEmail() {
   navigator.clipboard.writeText("falahudin6@gmail.com");
