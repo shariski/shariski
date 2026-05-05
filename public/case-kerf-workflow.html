@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>How Kerf Was Built — AI-Assisted Workflow Case Study | Falahudin Halim Shariski</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="description" content="The structured Claude Code workflow used to design, architect, and ship kerf — specs before code, decisions as ADRs, subagent-driven TDD, visual audits.">
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+body {
+  background-color: #020617;
+  color: #cbd5e1;
+  font-family: ui-sans-serif, system-ui;
+}
+</style>
+</head>
+
+<body class="px-6 py-16 max-w-4xl mx-auto">
+
+<a href="index.html" class="text-sky-400 text-sm hover:underline">
+← Back to Home
+</a>
+
+<h1 class="text-3xl font-bold text-white mt-8 mb-4">
+How Kerf Was Built
+</h1>
+<p class="text-slate-500 text-sm mb-8">
+A structured Claude Code workflow — specs before code, decisions as ADRs, subagent-driven TDD, visual audits.
+</p>
+
+<h2 class="text-xl text-sky-400 mb-4">Spec before code</h2>
+<p class="text-slate-400 mb-4 leading-relaxed">
+kerf has a <code class="text-slate-300">docs/</code> folder before it has a working build. Product spec, technical architecture, information architecture, design system, task breakdown — written, revised, and committed as living documents. Decisions are visible artifacts, not tribal knowledge.
+</p>
+<p class="text-slate-400 mb-6 leading-relaxed">
+The discipline matters more than the tool. A spec you can read, link, and amend is a spec you can argue with. A spec that lives only in conversation is one that drifts the moment the conversation ends.
+</p>
+
+<h2 class="text-xl text-sky-400 mb-4">Decisions as ADRs</h2>
+<p class="text-slate-400 mb-4 leading-relaxed">
+Every meaningful product or architectural pivot lives in a design-evolution log as a numbered ADR. Cost, motivation, and downstream impact are captured at the time of the decision, not reconstructed later from git blame.
+</p>
+<p class="text-slate-400 mb-4 leading-relaxed">
+The clearest example: ADR-003. Mid-build, the product reframed from "generic typing platform with split-keyboard support" to "deliberate-practice platform for split-keyboard transition." That change added six to nine weeks of work, introduced a new <code class="text-slate-300">session_targets</code> table, added journey-aware scoring to the weakness model, and inserted a target-selection engine layer above the existing exercise generator.
+</p>
+<p class="text-slate-400 mb-6 leading-relaxed">
+The ADR was written before any of those changes were implemented. The architecture spec was updated. Then the code followed. Re-spec, then re-code — never the reverse.
+</p>
+
+<h2 class="text-xl text-sky-400 mb-4">Decompose into shippable milestones</h2>
+<p class="text-slate-400 mb-4 leading-relaxed">
+The 18-to-26-week build is broken into phases, and each phase produces something demo-able. No big-bang integration. The first phase that runs onboarding doesn't need a working engine; the first phase with an engine doesn't need polished UI. The phases compose, but each one is shippable in isolation.
+</p>
+<p class="text-slate-400 mb-6 leading-relaxed">
+Solo development without milestone discipline turns into a perpetually-90%-done branch. The discipline isn't about velocity. It's about always having something that works.
+</p>
+
+<h2 class="text-xl text-sky-400 mb-4">Subagent-driven TDD</h2>
+<p class="text-slate-400 mb-4 leading-relaxed">
+Implementation runs through Claude Code subagents — fresh context per task, isolated changes, tests-first. The structure is what makes the model's output coherent across months: every task starts with a failing test, ends with a passing one, and gets reviewed before merge.
+</p>
+<p class="text-slate-400 mb-6 leading-relaxed">
+The model is the typist. I am the architect, the reviewer, and the person responsible for the result. The subagent doesn't decide what good looks like; it executes against a spec that does.
+</p>
+
+<h2 class="text-xl text-sky-400 mb-4">Visual audits against design intent</h2>
+<p class="text-slate-400 mb-6 leading-relaxed">
+Visual audits compare rendered implementation against the design wireframes systematically — not vibes-based "looks fine," but a structured side-by-side check on every primary screen. Wireframe on the left, live implementation on the right.
+</p>
+
+<div class="space-y-10 mb-8">
+
+<figure>
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <img src="images/kerf/audit-home-wireframe.png" alt="Home screen wireframe" class="w-full rounded border border-slate-800">
+    <img src="images/kerf/audit-home-impl.png" alt="Home screen implementation" class="w-full rounded border border-slate-800">
+  </div>
+  <figcaption class="text-slate-500 text-sm mt-2">
+    Home — confirms hero hierarchy, primary CTA placement, and onboarding entry point match the spec.
+  </figcaption>
+</figure>
+
+<figure>
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <img src="images/kerf/audit-dashboard-wireframe.png" alt="Dashboard wireframe" class="w-full rounded border border-slate-800">
+    <img src="images/kerf/audit-dashboard-impl.png" alt="Dashboard implementation" class="w-full rounded border border-slate-800">
+  </div>
+  <figcaption class="text-slate-500 text-sm mt-2">
+    Dashboard — verifies split-specific metrics surface in the order and language the spec requires, not as a generic stats dump.
+  </figcaption>
+</figure>
+
+<figure>
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <img src="images/kerf/audit-keyboards-wireframe.png" alt="Keyboards screen wireframe" class="w-full rounded border border-slate-800">
+    <img src="images/kerf/audit-keyboards-impl.png" alt="Keyboards screen implementation" class="w-full rounded border border-slate-800">
+  </div>
+  <figcaption class="text-slate-500 text-sm mt-2">
+    Keyboards — checks that the rendered split layout uses correct columnar finger assignments rather than QWERTY defaults.
+  </figcaption>
+</figure>
+
+<figure>
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <img src="images/kerf/audit-practice-wireframe.png" alt="Practice session wireframe" class="w-full rounded border border-slate-800">
+    <img src="images/kerf/audit-practice-impl.png" alt="Practice session implementation" class="w-full rounded border border-slate-800">
+  </div>
+  <figcaption class="text-slate-500 text-sm mt-2">
+    Practice — confirms the briefing → attention → evaluation loop is preserved in the live UI, with no celebratory verdicts inserted.
+  </figcaption>
+</figure>
+
+</div>
+
+<h2 class="text-xl text-sky-400 mb-4">Re-spec when reality shifts</h2>
+<p class="text-slate-400 mb-4 leading-relaxed">
+ADR-003 was the largest re-spec, but not the only one. Whenever implementation surfaced something the model missed — an unhandled phase transition, a journey case that broke the resolver, a UI affordance that contradicted a stated value — the docs were updated first, then the code. The doc tree is the source of truth. The codebase is the realization of the doc tree.
+</p>
+<p class="text-slate-400 mb-6 leading-relaxed">
+This is the inversion of "code is the spec." Code lies; specs are read. When the spec is the artifact people argue with, you get a different shape of conversation, and a different shape of product.
+</p>
+
+<h2 class="text-xl text-sky-400 mb-4">What this workflow is and isn't</h2>
+<p class="text-slate-400 mb-4 leading-relaxed">
+This is not "I prompted Claude into a working app." kerf has a 22 KB product spec, a 53 KB architecture document, a 41 KB task breakdown, and a 91 KB design-evolution log. None of those documents exist by accident. They are the work.
+</p>
+<p class="text-slate-400 mb-4 leading-relaxed">
+What changes with AI as leveraged tooling: the typing speed of implementation, the willingness to write a failing test before the function exists, the patience for refactoring when the spec shifts. What does not change: the responsibility for taste, for architecture, for whether the product is worth shipping at all.
+</p>
+<p class="text-slate-400 leading-relaxed">
+The workflow above is what made AI assistance compound across a real product instead of dissolve into demo-ware. It's the discipline that scales, not the tool.
+</p>
+
+</body>
+</html>
