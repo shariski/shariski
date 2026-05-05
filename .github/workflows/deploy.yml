@@ -1,26 +1,29 @@
 # Deploy shariski.com to the VPS.
 #
-# Pipeline (deliberately simple — no GHCR, image is built on the VPS):
-#   1. SCP the repo's Dockerfile + public/ into a staging dir on the VPS.
-#   2. SSH in: swap staging into /opt/shariski/, rebuild the image,
-#      replace the running `shariski` container.
+# Pipeline:
+#   1. SCP the repo's Dockerfile + public/ into a staging dir under the
+#      deploy user's home on the VPS.
+#   2. SSH in, swap staging into ./shariski/ (the build context that the
+#      compose file's `build: ./shariski` line refers to).
+#   3. Run `docker compose up -d --build shariski` from $HOME.
+#
+# nginx-proxy + acme-companion (already running on the VPS) detect the
+# recreated container via the Docker socket, re-render their configs,
+# and route shariski.com / www.shariski.com to it. No host port binding,
+# no nginx config edits, no certificate work needed in this workflow.
 #
 # Triggers:
 #   - push to main
-#   - manual dispatch (useful for redeploying a known-good SHA)
+#   - manual dispatch (useful for redeploying after a rollback)
 #
 # Required repo secrets (same names as the kerf repo so the same VPS
 # key can be reused):
 #   DEPLOY_HOST    — VPS hostname or IP
-#   DEPLOY_USER    — SSH user with docker group membership
-#   DEPLOY_SSH_KEY — private key (PEM); public half lives in
-#                    ~/.ssh/authorized_keys on the VPS
-#
-# After first deploy you (one time) also need to:
-#   - Point the nginx reverse-proxy upstream for shariski.com at
-#     127.0.0.1:8080 and reload nginx.
-#   - If host port 8080 collides with anything else on the VPS,
-#     change HOST_PORT below — that's the only knob worth touching.
+#   DEPLOY_USER    — SSH user (the deploy user; must be in the docker
+#                    group, and the docker-compose.yml must live in
+#                    that user's home directory)
+#   DEPLOY_SSH_KEY — private key (PEM); public half lives in the deploy
+#                    user's ~/.ssh/authorized_keys on the VPS
 #
 # Security note: this workflow does not interpolate any github.event.*
 # fields into run scripts. All shell substitutions go through env vars.
@@ -33,16 +36,17 @@ on:
   workflow_dispatch:
 
 # Never run two deploys concurrently. Queue them so a fast-follow push
-# does not race with the previous deploy's `docker run`.
+# does not race with the previous deploy's `docker compose up`.
 concurrency:
   group: deploy-prod
   cancel-in-progress: false
 
 env:
-  DEPLOY_PATH: /opt/shariski
-  HOST_PORT: "8080"
-  CONTAINER_NAME: shariski
-  IMAGE_TAG: shariski:latest
+  # Subdirectory under $HOME that is the build context for the shariski
+  # service. Must match `build: ./<this-name>` in docker-compose.yml.
+  BUILD_DIR: shariski
+  # Service name in docker-compose.yml. Must match exactly.
+  SERVICE: shariski
 
 jobs:
   deploy:
@@ -50,9 +54,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Stage Dockerfile + public/ in a sibling directory on the VPS
-      # before touching the live tree. Lets us swap atomically; the
-      # running container never sees a half-written file system.
+      # Stage Dockerfile + public/ in a sibling directory before
+      # touching the live tree. Lets us swap atomically; the running
+      # container never sees a half-written file system.
+      #
+      # The target path is relative — SFTP starts in the deploy user's
+      # home directory, so this resolves to ~/_staging-shariski/ on
+      # the VPS. `rm: true` wipes any prior staging from a failed run.
       - name: scp build context to VPS staging
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -62,54 +70,39 @@ jobs:
           source: |
             Dockerfile
             public/
-          target: ${{ env.DEPLOY_PATH }}/_staging/
+          target: _staging-${{ env.BUILD_DIR }}/
           rm: true
 
-      - name: swap, rebuild, redeploy
+      - name: swap and rebuild
         uses: appleboy/ssh-action@v1.2.0
         env:
-          DEPLOY_PATH: ${{ env.DEPLOY_PATH }}
-          HOST_PORT: ${{ env.HOST_PORT }}
-          CONTAINER_NAME: ${{ env.CONTAINER_NAME }}
-          IMAGE_TAG: ${{ env.IMAGE_TAG }}
+          BUILD_DIR: ${{ env.BUILD_DIR }}
+          SERVICE: ${{ env.SERVICE }}
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
-          envs: DEPLOY_PATH,HOST_PORT,CONTAINER_NAME,IMAGE_TAG
+          envs: BUILD_DIR,SERVICE
           script: |
             set -euo pipefail
 
-            # Ensure the deploy dir exists (first deploy or after a reset).
-            mkdir -p "$DEPLOY_PATH"
-            cd "$DEPLOY_PATH"
+            # ssh-action's default cwd is $HOME — the directory that
+            # holds docker-compose.yml. Explicit cd makes the contract
+            # readable and survives any future change to the action.
+            cd ~
 
-            # Swap the freshly-uploaded build context into place. Old
-            # tree is removed cleanly so stale assets (renamed pages,
-            # removed images) don't linger inside the next image.
-            rm -rf Dockerfile public
-            mv _staging/Dockerfile .
-            mv _staging/public public
-            rmdir _staging
+            # Swap the freshly-uploaded build context into place. The
+            # old tree is removed cleanly so stale assets (renamed
+            # pages, removed images) don't linger inside the next image.
+            rm -rf "$BUILD_DIR"
+            mv "_staging-$BUILD_DIR" "$BUILD_DIR"
 
-            # Rebuild image. Build is a few seconds — nginx:alpine plus
-            # a COPY of static HTML.
-            docker build -t "$IMAGE_TAG" .
-
-            # Replace the running container with one off the new image.
-            # `|| true` keeps the script idempotent on first deploy when
-            # the container does not exist yet.
-            docker stop "$CONTAINER_NAME" 2>/dev/null || true
-            docker rm "$CONTAINER_NAME" 2>/dev/null || true
-
-            # Bind only to loopback so the container is reachable only
-            # via the local nginx reverse proxy, never directly from
-            # the public internet.
-            docker run -d \
-              --name "$CONTAINER_NAME" \
-              --restart unless-stopped \
-              -p "127.0.0.1:${HOST_PORT}:80" \
-              "$IMAGE_TAG"
+            # Rebuild the service's image and recreate its container.
+            # nginx-proxy will detect the new container via the Docker
+            # socket and re-render its config automatically; acme-
+            # companion handles certificates from VIRTUAL_HOST /
+            # LETSENCRYPT_HOST env vars on the container itself.
+            docker compose up -d --build "$SERVICE"
 
             # Reclaim disk from old image layers so the VPS doesn't
             # accumulate dangling layers across deploys.
