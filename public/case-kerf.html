@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kerf — Engineering Case Study | Falahudin Halim Shariski</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="description" content="Engineering case study of kerf, a typing platform for split-keyboard transitioners. Pure-TypeScript adaptive engine beneath a React shell.">
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+body {
+  background-color: #020617;
+  color: #cbd5e1;
+  font-family: ui-sans-serif, system-ui;
+}
+</style>
+</head>
+
+<body class="px-6 py-16 max-w-4xl mx-auto">
+
+<a href="index.html" class="text-sky-400 text-sm hover:underline">
+← Back to Home
+</a>
+
+<h1 class="text-3xl font-bold text-white mt-8 mb-8">
+Kerf — Typing Platform for Split-Keyboard Transitioners
+</h1>
+
+<h2 class="text-xl text-sky-400 mb-4">What kerf is</h2>
+<p class="text-slate-400 mb-6 leading-relaxed">
+kerf is a typing platform built for people transitioning from row-staggered keyboards to split columnar keyboards. Live at <a href="https://typekerf.com" target="_blank" class="text-sky-400 hover:underline">typekerf.com</a>. It treats the transition as a distinct learning journey — recognizing that someone three weeks into a Sofle is solving different problems than someone two years into a stock keyboard, and that the metrics, content, and feedback should adapt accordingly.
+</p>
+
+<h2 class="text-xl text-sky-400 mb-4">A domain core, not frontend logic</h2>
+<p class="text-slate-400 mb-4 leading-relaxed">
+The easy way to build a typing platform is to grow business logic inside React components — keystroke handlers in event listeners, weakness scoring in <code class="text-slate-300">useEffect</code>, target selection wherever the screen needs it. I refused that on principle.
+</p>
+<p class="text-slate-400 mb-4 leading-relaxed">
+Instead, the engine lives as pure TypeScript modules beneath the framework: <code class="text-slate-300">targetSelection</code>, <code class="text-slate-300">motionPatterns</code>, <code class="text-slate-300">weaknessScoring</code>, <code class="text-slate-300">fingerAssignment</code>, <code class="text-slate-300">statistics</code>. They take inputs and return values. They depend on no React, no Zustand, no DOM. The React layer is a renderer; Zustand holds UI state only.
+</p>
+<p class="text-slate-400 mb-6 leading-relaxed">
+That separation paid off twice. First, it let me reason about the engine independently — testable, swappable, no hidden coupling to component lifecycle. Second, when a mid-build product pivot reframed the engine's responsibilities, the entire change happened inside the domain layer. The UI was unaffected because the UI was never the source of truth.
+</p>
+
+<h2 class="text-xl text-sky-400 mb-4">Values as architectural constraints</h2>
+<p class="text-slate-400 mb-4 leading-relaxed">
+The product principles read like marketing copy if you let them: accuracy over speed, no gamification, transparent engine. They are not. They are constraints encoded in the engine.
+</p>
+<p class="text-slate-400 mb-4 leading-relaxed">
+Weakness scoring is transparent because the function is pure and the inputs are visible — the user can see exactly which characters and patterns drove a target selection. There are no pass/fail verdicts because the engine never returns one; it surfaces target numbers, the user evaluates themselves. Target selection is deterministic given the same inputs, because non-determinism in feedback is a bug, not a feature.
+</p>
+<p class="text-slate-400 mb-6 leading-relaxed">
+When values shape architecture, the values become enforceable. Removing the gamification later isn't a redesign — it's already absent.
+</p>
+
+<h2 class="text-xl text-sky-400 mb-4">Modeling the keyboard</h2>
+<p class="text-slate-400 mb-4 leading-relaxed">
+A browser cannot tell which finger pressed a key. It receives a keycode and nothing else. For a typing platform that targets split columnar keyboards, that is the central modeling problem.
+</p>
+<p class="text-slate-400 mb-4 leading-relaxed">
+Finger assignment is a deterministic resolver: given a keyboard profile (Sofle, Lily58) and a journey (conventional-mapping vs. strict-columnar), return which physical finger should press each key. Layered on top of that resolver are split-specific metrics — inner-column error rate, cross-hand bigram timing, thumb-cluster decision time — that no other typing platform surfaces because no other typing platform models the hardware this way.
+</p>
+<p class="text-slate-400 mb-6 leading-relaxed">
+The resolver is small. The leverage is large. Almost every meaningful product feature reads from it.
+</p>
+
+<h2 class="text-xl text-sky-400 mb-4">What shipped</h2>
+<p class="text-slate-400 mb-4 leading-relaxed">
+kerf is live at <a href="https://typekerf.com" target="_blank" class="text-sky-400 hover:underline">typekerf.com</a>. Onboarding captures keyboard profile, finger-assignment journey, and current phase (transitioning vs. refining). The dashboard surfaces split-specific metrics in language the user actually cares about. Practice sessions follow an explicit briefing → attention → evaluation loop — no mystery, no ceremony. The keyboards screen renders the user's specific layout with correct columnar finger assignments instead of the QWERTY default that other platforms ship.
+</p>
+<p class="text-slate-400 mb-6 leading-relaxed">
+Shipped solo, end to end — product positioning, architecture, design system, implementation.
+</p>
+
+<h2 class="text-xl text-sky-400 mb-4">How it was built</h2>
+<p class="text-slate-400 leading-relaxed">
+Built with a structured Claude Code workflow — <a href="case-kerf-workflow.html" class="text-sky-400 hover:underline">see the build process →</a>
+</p>
+
+</body>
+</html>
