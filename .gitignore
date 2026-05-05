@@ -1,0 +1,4 @@
+.DS_Store
+.claude/
+.code-review-graph/
+node_modules/

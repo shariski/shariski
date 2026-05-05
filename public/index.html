@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Falahudin Halim Shariski | Distributed Systems Engineer</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="description" content="Designing distributed systems that remain correct under pressure. Backend engineer focused on financial architecture and long-term clarity.">
+
+<script src="https://cdn.tailwindcss.com"></script>
+
+<style>
+html { scroll-behavior: smooth; }
+body {
+  background-color: #020617;
+  color: #cbd5e1;
+  font-family: ui-sans-serif, system-ui;
+}
+
+/* Subtle animated grid */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(to right, rgba(56,189,248,0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(56,189,248,0.05) 1px, transparent 1px);
+  background-size: 40px 40px;
+  animation: moveGrid 40s linear infinite;
+  z-index: -1;
+}
+@keyframes moveGrid {
+  from { background-position: 0 0; }
+  to { background-position: 40px 40px; }
+}
+
+.glow { text-shadow: 0 0 12px rgba(56,189,248,0.25); }
+
+.reveal {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: all 0.8s ease;
+}
+.reveal.active {
+  opacity: 1;
+  transform: translateY(0);
+}
+</style>
+</head>
+
+<body>
+
+<!-- HERO -->
+<section class="min-h-screen flex flex-col justify-center items-center text-center px-6">
+
+<h1 class="text-4xl md:text-6xl font-bold mb-6 glow">
+I Design Systems<br>That Stay Correct Under Pressure.
+</h1>
+
+<p class="max-w-3xl text-lg md:text-xl text-slate-400 leading-relaxed mb-8">
+I’m Falahudin Halim Shariski — a backend engineer working at the intersection of
+distributed systems, financial correctness, and architectural clarity.
+I don’t just implement features.
+I redesign systems so they remain understandable years later.
+</p>
+
+<div class="flex gap-6 text-slate-400 text-sm">
+<a href="#work" class="hover:text-sky-400">Work</a>
+<a href="#leadership" class="hover:text-sky-400">Leadership</a>
+<a href="#contact" class="hover:text-sky-400">Connect</a>
+</div>
+
+</section>
+
+<!-- WORK -->
+<section id="work" class="py-24 max-w-5xl mx-auto px-6 reveal">
+
+<h2 class="text-2xl text-sky-400 mb-12 text-center">Key Projects</h2>
+
+<div class="space-y-14">
+
+<div>
+<h3 class="text-xl font-semibold text-white mb-4">
+Settlement Engine Refactor
+</h3>
+<p class="text-slate-400 leading-relaxed mb-4">
+A deep architectural redesign of a complex financial settlement engine.
+From a tightly coupled monolith into a modular, execution-driven system.
+</p>
+<a href="case-settlement.html" class="text-sky-400 hover:underline text-sm">
+View Detailed Case Study →
+</a>
+</div>
+
+<div>
+<h3 class="text-xl font-semibold text-white mb-4">
+Redis ZSet Ordered Transaction Queue
+</h3>
+<p class="text-slate-400 leading-relaxed">
+Designed deterministic sequencing to eliminate race conditions
+and out-of-order balance inconsistencies in distributed workflows.
+</p>
+</div>
+
+<div>
+<h3 class="text-xl font-semibold text-white mb-4">
+Financial Migration (USD → IDR)
+</h3>
+<p class="text-slate-400 leading-relaxed">
+Led precision-critical currency migration,
+ensuring regulatory alignment without breaking financial reporting.
+</p>
+</div>
+
+</div>
+</section>
+
+<!-- TECHNICAL LEADERSHIP -->
+<section id="leadership" class="py-24 max-w-4xl mx-auto px-6 text-center reveal">
+
+<h2 class="text-2xl text-sky-400 mb-8">Technical Leadership</h2>
+
+<p class="text-slate-400 leading-relaxed mb-6">
+Over time, I’ve learned that leadership in engineering rarely looks dramatic.
+It shows up in architecture reviews.
+In naming decisions.
+In execution ordering.
+In asking uncomfortable questions about long-term consequences.
+</p>
+
+<p class="text-slate-400 leading-relaxed mb-6">
+I push for systems that are observable.
+Workflows that are explicit.
+Tests that enforce discipline.
+And decisions that are documented instead of tribal.
+</p>
+
+<p class="text-slate-400 leading-relaxed">
+My ambition is not just to build working software —
+but to shape technical direction in ways that reduce complexity
+for everyone who builds after me.
+</p>
+
+</section>
+
+<!-- CONTACT -->
+<section id="contact" class="py-24 text-center reveal">
+
+<h2 class="text-2xl text-sky-400 mb-10">Connect</h2>
+
+<div class="flex justify-center gap-8 text-slate-300">
+
+<a href="https://github.com/shariski" target="_blank" class="hover:text-sky-400 transition">
+GitHub
+</a>
+
+<a href="https://linkedin.com/in/shariski" target="_blank" class="hover:text-sky-400 transition">
+LinkedIn
+</a>
+
+<button onclick="copyEmail()" class="hover:text-sky-400 transition">
+Copy Email
+</button>
+
+</div>
+
+<p id="copied" class="text-green-400 text-sm mt-4 opacity-0 transition">
+Email copied to clipboard.
+</p>
+
+</section>
+
+<script>
+const reveals = document.querySelectorAll(".reveal");
+window.addEventListener("scroll", () => {
+  reveals.forEach(el => {
+    const windowHeight = window.innerHeight;
+    const elementTop = el.getBoundingClientRect().top;
+    if (elementTop < windowHeight - 100) {
+      el.classList.add("active");
+    }
+  });
+});
+
+function copyEmail() {
+  navigator.clipboard.writeText("falahudin6@gmail.com");
+  const msg = document.getElementById("copied");
+  msg.style.opacity = 1;
+  setTimeout(() => { msg.style.opacity = 0; }, 2000);
+}
+</script>
+
+</body>
+</html>
+

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Settlement Engine Refactor | Case Study</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+body {
+  background-color: #020617;
+  color: #cbd5e1;
+  font-family: ui-sans-serif, system-ui;
+}
+</style>
+</head>
+
+<body class="px-6 py-16 max-w-4xl mx-auto">
+
+<a href="index.html" class="text-sky-400 text-sm hover:underline">
+← Back to Home
+</a>
+
+<h1 class="text-3xl font-bold text-white mt-8 mb-8">
+Settlement Engine Refactor
+</h1>
+
+<h2 class="text-xl text-sky-400 mb-4">The Problem</h2>
+<p class="text-slate-400 mb-6 leading-relaxed">
+The original settlement engine evolved organically over time.
+Business rules accumulated.
+Execution paths intertwined.
+Balance adjustments were tightly coupled with side effects.
+Debugging required tracing through large files with hidden dependencies.
+</p>
+
+<h2 class="text-xl text-sky-400 mb-4">The Risk</h2>
+<p class="text-slate-400 mb-6 leading-relaxed">
+In financial systems, subtle ordering mistakes can result in incorrect balances.
+Race conditions may not appear immediately —
+but when they do, the cost is high.
+</p>
+
+<h2 class="text-xl text-sky-400 mb-4">The Approach</h2>
+<p class="text-slate-400 mb-6 leading-relaxed">
+I redesigned the engine using a builder + execution pattern.
+Each settlement step became explicit.
+Execution order became deterministic.
+Balance updates were isolated.
+Observability was embedded directly into the workflow.
+</p>
+
+<h2 class="text-xl text-sky-400 mb-4">The Result</h2>
+<p class="text-slate-400 mb-6 leading-relaxed">
+The refactored system reduced cognitive load,
+improved debugging clarity,
+and eliminated balance inconsistencies caused by sequencing errors.
+Future workflow extensions became safer and more predictable.
+</p>
+
+<h2 class="text-xl text-sky-400 mb-4">What I Learned</h2>
+<p class="text-slate-400 leading-relaxed">
+Complexity rarely comes from business logic alone.
+It comes from hidden coupling and implicit execution paths.
+Making flows explicit is one of the most powerful architectural decisions.
+</p>
+
+</body>
+</html>
+
+
