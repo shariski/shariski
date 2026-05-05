@@ -1,0 +1,116 @@
+# Deploy shariski.com to the VPS.
+#
+# Pipeline (deliberately simple — no GHCR, image is built on the VPS):
+#   1. SCP the repo's Dockerfile + public/ into a staging dir on the VPS.
+#   2. SSH in: swap staging into /opt/shariski/, rebuild the image,
+#      replace the running `shariski` container.
+#
+# Triggers:
+#   - push to main
+#   - manual dispatch (useful for redeploying a known-good SHA)
+#
+# Required repo secrets (same names as the kerf repo so the same VPS
+# key can be reused):
+#   DEPLOY_HOST    — VPS hostname or IP
+#   DEPLOY_USER    — SSH user with docker group membership
+#   DEPLOY_SSH_KEY — private key (PEM); public half lives in
+#                    ~/.ssh/authorized_keys on the VPS
+#
+# After first deploy you (one time) also need to:
+#   - Point the nginx reverse-proxy upstream for shariski.com at
+#     127.0.0.1:8080 and reload nginx.
+#   - If host port 8080 collides with anything else on the VPS,
+#     change HOST_PORT below — that's the only knob worth touching.
+#
+# Security note: this workflow does not interpolate any github.event.*
+# fields into run scripts. All shell substitutions go through env vars.
+
+name: deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Never run two deploys concurrently. Queue them so a fast-follow push
+# does not race with the previous deploy's `docker run`.
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+env:
+  DEPLOY_PATH: /opt/shariski
+  HOST_PORT: "8080"
+  CONTAINER_NAME: shariski
+  IMAGE_TAG: shariski:latest
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Stage Dockerfile + public/ in a sibling directory on the VPS
+      # before touching the live tree. Lets us swap atomically; the
+      # running container never sees a half-written file system.
+      - name: scp build context to VPS staging
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          source: |
+            Dockerfile
+            public/
+          target: ${{ env.DEPLOY_PATH }}/_staging/
+          rm: true
+
+      - name: swap, rebuild, redeploy
+        uses: appleboy/ssh-action@v1.2.0
+        env:
+          DEPLOY_PATH: ${{ env.DEPLOY_PATH }}
+          HOST_PORT: ${{ env.HOST_PORT }}
+          CONTAINER_NAME: ${{ env.CONTAINER_NAME }}
+          IMAGE_TAG: ${{ env.IMAGE_TAG }}
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          envs: DEPLOY_PATH,HOST_PORT,CONTAINER_NAME,IMAGE_TAG
+          script: |
+            set -euo pipefail
+
+            # Ensure the deploy dir exists (first deploy or after a reset).
+            mkdir -p "$DEPLOY_PATH"
+            cd "$DEPLOY_PATH"
+
+            # Swap the freshly-uploaded build context into place. Old
+            # tree is removed cleanly so stale assets (renamed pages,
+            # removed images) don't linger inside the next image.
+            rm -rf Dockerfile public
+            mv _staging/Dockerfile .
+            mv _staging/public public
+            rmdir _staging
+
+            # Rebuild image. Build is a few seconds — nginx:alpine plus
+            # a COPY of static HTML.
+            docker build -t "$IMAGE_TAG" .
+
+            # Replace the running container with one off the new image.
+            # `|| true` keeps the script idempotent on first deploy when
+            # the container does not exist yet.
+            docker stop "$CONTAINER_NAME" 2>/dev/null || true
+            docker rm "$CONTAINER_NAME" 2>/dev/null || true
+
+            # Bind only to loopback so the container is reachable only
+            # via the local nginx reverse proxy, never directly from
+            # the public internet.
+            docker run -d \
+              --name "$CONTAINER_NAME" \
+              --restart unless-stopped \
+              -p "127.0.0.1:${HOST_PORT}:80" \
+              "$IMAGE_TAG"
+
+            # Reclaim disk from old image layers so the VPS doesn't
+            # accumulate dangling layers across deploys.
+            docker image prune -f
