@@ -1,16 +1,18 @@
 # Deploy shariski.com to the VPS.
 #
 # Pipeline:
-#   1. SCP the repo's Dockerfile + public/ into a staging dir under the
-#      deploy user's home on the VPS.
-#   2. SSH in, swap staging into ./shariski/ (the build context that the
-#      compose file's `build: ./shariski` line refers to).
-#   3. Run `docker compose up -d --build shariski` from $HOME.
+#   1. SCP the repo's Dockerfile + public/ into a staging dir at
+#      /opt/shariski-staging/ on the VPS.
+#   2. SSH in, swap staging into /opt/shariski/ (the build context that
+#      the compose file's `build: .` line refers to).
+#   3. Run `docker compose up -d --build shariski` from /opt/shariski.
 #
-# nginx-proxy + acme-companion (already running on the VPS) detect the
-# recreated container via the Docker socket, re-render their configs,
-# and route shariski.com / www.shariski.com to it. No host port binding,
-# no nginx config edits, no certificate work needed in this workflow.
+# nginx-proxy (in /opt/proxy) detects the recreated container via the
+# Docker socket, re-renders its config, and routes shariski.com /
+# www.shariski.com to it. TLS is served by nginx-proxy's DEFAULT cert
+# (wildcard *.shariski.com Cloudflare Origin Cert) — this workflow does
+# no certificate work, and LETSENCRYPT_HOST is intentionally NOT set on
+# the container (the domain is fronted by Cloudflare).
 #
 # Triggers:
 #   - push to main
@@ -20,8 +22,7 @@
 # key can be reused):
 #   DEPLOY_HOST    — VPS hostname or IP
 #   DEPLOY_USER    — SSH user (the deploy user; must be in the docker
-#                    group, and the docker-compose.yml must live in
-#                    that user's home directory)
+#                    group, and have write access to /opt/shariski)
 #   DEPLOY_SSH_KEY — private key (PEM); public half lives in the deploy
 #                    user's ~/.ssh/authorized_keys on the VPS
 #
@@ -42,9 +43,11 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  # Subdirectory under $HOME that is the build context for the shariski
-  # service. Must match `build: ./<this-name>` in docker-compose.yml.
-  BUILD_DIR: shariski
+  # Absolute path on the VPS that holds docker-compose.yml + the build
+  # context (Dockerfile + public/). Standardised under /opt.
+  STACK_DIR: /opt/shariski
+  # Staging dir the build context is uploaded to before the atomic swap.
+  STAGING_DIR: /opt/shariski-staging
   # Service name in docker-compose.yml. Must match exactly.
   SERVICE: shariski
 
@@ -54,13 +57,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Stage Dockerfile + public/ in a sibling directory before
-      # touching the live tree. Lets us swap atomically; the running
-      # container never sees a half-written file system.
-      #
-      # The target path is relative — SFTP starts in the deploy user's
-      # home directory, so this resolves to ~/_staging-shariski/ on
-      # the VPS. `rm: true` wipes any prior staging from a failed run.
+      # Stage Dockerfile + public/ in a sibling dir before touching the
+      # live tree. Lets us swap atomically; the running container never
+      # sees a half-written file system. `rm: true` wipes any prior
+      # staging from a failed run.
       - name: scp build context to VPS staging
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -68,38 +68,36 @@ jobs:
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           source: "Dockerfile,public"
-          target: _staging-${{ env.BUILD_DIR }}/
+          target: ${{ env.STAGING_DIR }}/
           rm: true
 
       - name: swap and rebuild
         uses: appleboy/ssh-action@v1.2.0
         env:
-          BUILD_DIR: ${{ env.BUILD_DIR }}
+          STACK_DIR: ${{ env.STACK_DIR }}
+          STAGING_DIR: ${{ env.STAGING_DIR }}
           SERVICE: ${{ env.SERVICE }}
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
-          envs: BUILD_DIR,SERVICE
+          envs: STACK_DIR,STAGING_DIR,SERVICE
           script: |
             set -euo pipefail
 
-            # ssh-action's default cwd is $HOME — the directory that
-            # holds docker-compose.yml. Explicit cd makes the contract
-            # readable and survives any future change to the action.
-            cd ~
+            cd "$STACK_DIR"
 
-            # Swap the freshly-uploaded build context into place. The
-            # old tree is removed cleanly so stale assets (renamed
-            # pages, removed images) don't linger inside the next image.
-            rm -rf "$BUILD_DIR"
-            mv "_staging-$BUILD_DIR" "$BUILD_DIR"
+            # Swap the freshly-uploaded build context into place. The old
+            # Dockerfile + public/ are removed cleanly so stale assets
+            # (renamed pages, removed images) don't linger in the next
+            # image. docker-compose.yml itself stays put (not uploaded).
+            rm -rf Dockerfile public
+            mv "$STAGING_DIR/Dockerfile" "$STAGING_DIR/public" ./
+            rmdir "$STAGING_DIR" 2>/dev/null || true
 
             # Rebuild the service's image and recreate its container.
-            # nginx-proxy will detect the new container via the Docker
-            # socket and re-render its config automatically; acme-
-            # companion handles certificates from VIRTUAL_HOST /
-            # LETSENCRYPT_HOST env vars on the container itself.
+            # nginx-proxy detects the new container via the Docker socket
+            # and re-renders its config automatically.
             docker compose up -d --build "$SERVICE"
 
             # Reclaim disk from old image layers so the VPS doesn't
