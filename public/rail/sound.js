@@ -213,11 +213,12 @@
     if (THEME === 'water')     { bubble(); return 900 + Math.random() * 1900; }
     return -1;                                                // wind / depot → bed only
   }
-  let ambTimer = 0;
+  let ambTimer = 0, _dbgShots = 0;
   function ambientTick() {
     if (!enabled || !started) return;
     const d = ambientNext();
     if (d < 0) return;
+    _dbgShots++;
     ambTimer = setTimeout(ambientTick, d);
   }
 
@@ -316,4 +317,19 @@
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount);
   else mount();
+
+  // --- TEMP in-situ diagnostic: add ?sounddebug to the URL to show live audio state ---
+  if (/sounddebug/.test(location.search)) {
+    const dbg = document.createElement('div');
+    dbg.style.cssText = 'position:fixed;top:54px;left:8px;right:8px;z-index:99999;background:rgba(0,0,0,.88);color:#5f9;font:11px/1.45 ui-monospace,monospace;padding:9px 11px;border:1px solid #5f9;border-radius:8px;white-space:pre-wrap;pointer-events:none';
+    const put = () => { if (document.body && !dbg.parentNode) document.body.appendChild(dbg); };
+    put(); document.addEventListener('DOMContentLoaded', put);
+    setInterval(() => {
+      dbg.textContent = 'SOUND DEBUG  (theme=' + THEME + ')\n'
+        + 'enabled=' + enabled + '  started=' + started + '\n'
+        + 'ctx.state=' + (ctx ? ctx.state : 'none') + '  time=' + (ctx ? ctx.currentTime.toFixed(2) : '-') + '\n'
+        + 'master.gain=' + (master ? master.gain.value.toFixed(4) : '-') + '  vol=' + volume + '\n'
+        + 'ambient one-shots fired=' + _dbgShots;
+    }, 250);
+  }
 })();
