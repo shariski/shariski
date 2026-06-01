@@ -62,7 +62,8 @@
     + 'color:var(--dim,#889);border:1px solid rgba(255,255,255,.16);border-radius:999px;padding:5px 10px;white-space:nowrap}'
     + '.net-line.here .net-tag{color:#fff;border-color:rgba(255,255,255,.4)}'
     + '.net-foot{margin-top:20px;padding-top:15px;border-top:1px dashed rgba(255,255,255,.12);'
-    + 'font-family:var(--mono,monospace);font-size:11px;letter-spacing:.04em;color:var(--dim,#889);text-wrap:pretty;line-height:1.6}';
+    + 'font-family:var(--mono,monospace);font-size:11px;letter-spacing:.04em;color:var(--dim,#889);text-wrap:pretty;line-height:1.6}'
+    + '@media (max-width:640px){.net-pop{padding:16px}.net-line{grid-template-columns:1fr auto;gap:12px;padding:13px 13px}.net-rail{display:none}.net-meta .s{white-space:normal}.net-tag{font-size:9px;letter-spacing:.1em;padding:4px 8px}}';
 
   var style = document.createElement('style');
   style.textContent = css;
