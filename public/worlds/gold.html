@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>shariski.com — the settlement engine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300..800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  /* same engine + design system as the lines; this is a case-study world off the works line */
+  :root{
+    --ink:#f4eddc; --dim:#a08f6c; --accent:#d8a64a;
+    --display:'Bricolage Grotesque',system-ui,sans-serif;
+    --mono:'IBM Plex Mono',ui-monospace,monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%}
+  body{background:#161009;color:var(--ink);font-family:var(--display);
+    -webkit-font-smoothing:antialiased;overflow-x:hidden}
+
+  .mark{position:fixed;top:18px;left:20px;z-index:120;font-family:var(--mono);font-size:11px;
+    letter-spacing:.18em;text-transform:uppercase;color:var(--dim)}
+  .mark b{color:var(--ink);font-weight:500}
+  .corner{position:fixed;top:18px;right:20px;font-family:var(--mono);font-size:11px;letter-spacing:.04em;
+    color:var(--dim);z-index:120;text-align:right;line-height:1.6}
+  .corner b{color:var(--accent);font-weight:500}
+  .backline{position:fixed;top:42px;left:20px;z-index:120;font-family:var(--mono);font-size:11px;
+    letter-spacing:.1em;color:var(--dim);text-decoration:none}
+  .backline:hover{color:var(--accent)}
+  .backline b{color:var(--ink);font-weight:500}
+
+  .wrap{position:relative;height:600vh}
+  .cab{position:sticky;top:0;height:100vh;overflow:hidden;background:#161009}
+  canvas{position:absolute;inset:0;z-index:2}
+  .vig{position:absolute;inset:0;z-index:3;pointer-events:none;
+    background:radial-gradient(circle at 50% 42%,transparent 46%,rgba(10,7,3,.62) 100%)}
+  .uiscrim{position:absolute;left:0;right:0;bottom:0;height:50%;z-index:7;pointer-events:none;
+    background:linear-gradient(transparent,rgba(10,7,3,.74))}
+
+  .stations{position:absolute;inset:0;z-index:5}
+  .st{position:absolute;left:0;top:0;width:min(86vw,920px);text-align:center;
+    transform-origin:50% 50%;will-change:transform,opacity,filter}
+  .st .idx{font-family:var(--mono);font-size:11px;letter-spacing:.34em;color:var(--dim);margin-bottom:12px;opacity:0;transition:opacity .35s ease}
+  .st .era{font-family:var(--mono);font-size:14px;letter-spacing:.2em;text-transform:uppercase;color:var(--accent);margin-bottom:16px}
+  .st .ln{font-size:clamp(24px,3.8vw,46px);line-height:1.06;letter-spacing:-.03em;
+    font-variation-settings:'opsz' 96,'wght' 720;text-shadow:0 2px 30px rgba(10,7,3,.9);text-wrap:balance}
+  .st .enter{margin-top:16px;font-family:var(--mono);font-size:12px;letter-spacing:.2em;text-transform:uppercase;
+    color:var(--dim);opacity:0;transition:opacity .4s ease}
+  .st.is-focus .idx{opacity:.85}
+  .st.is-focus .enter{opacity:1}
+
+  /* ---- the settlement queue (the world's hero) ---- */
+  .vault{position:absolute;left:50%;bottom:38px;transform:translateX(-50%);z-index:8;
+    width:min(660px,90vw);display:flex;flex-direction:column;gap:11px}
+  .ledger{background:linear-gradient(180deg,rgba(30,23,12,.92),rgba(18,13,6,.94));
+    border:1px solid rgba(216,166,74,.26);border-radius:12px;overflow:hidden;
+    box-shadow:0 30px 90px rgba(0,0,0,.5),inset 0 1px 0 rgba(246,231,196,.05)}
+  .ldhead{display:flex;justify-content:space-between;align-items:center;
+    padding:9px 16px;border-bottom:1px solid rgba(216,166,74,.16);
+    font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim)}
+  .ldhead b{color:var(--accent);font-weight:500}
+  .rows{display:flex;flex-direction:column;padding:6px;gap:5px}
+  .row{display:grid;grid-template-columns:46px 1fr auto 14px;align-items:center;gap:14px;
+    padding:7px 12px;border-radius:7px;background:rgba(246,231,196,.03);
+    border:1px solid rgba(246,231,196,.07);transition:transform .55s cubic-bezier(.4,0,.2,1),
+      background .4s,border-color .4s,opacity .4s;will-change:transform}
+  .row .seq{font-family:var(--mono);font-size:13px;letter-spacing:.06em;color:var(--dim)}
+  .row .pair{font-family:var(--mono);font-size:13px;letter-spacing:.04em;color:var(--ink)}
+  .row .amt{font-family:var(--mono);font-size:13px;letter-spacing:.02em;color:var(--dim);text-align:right}
+  .row .dot{width:9px;height:9px;border-radius:50%;background:rgba(246,231,196,.22);justify-self:center;transition:.4s}
+  .row.lit{border-color:rgba(216,166,74,.5);background:rgba(216,166,74,.1)}
+  .row.lit .dot{background:var(--accent);box-shadow:0 0 10px var(--accent)}
+  .row.lit .seq{color:var(--accent)}
+  .row.err{border-color:#c2553a;background:rgba(194,85,58,.16)}
+  .row.err .dot{background:#e0563a;box-shadow:0 0 10px rgba(224,86,58,.6)}
+  .row.err .seq{color:#e0856a}
+  .row.muted{opacity:.32;filter:saturate(.4)}
+  /* monolith: fuse the rows into one undifferentiated block */
+  .vault[data-stage="0"] .rows{gap:0}
+  .vault[data-stage="0"] .row{border-radius:0;border-color:transparent;
+    background:rgba(246,231,196,.04);border-top:1px solid rgba(246,231,196,.05)}
+  .vault[data-stage="0"] .row .amt,.vault[data-stage="0"] .row .dot{opacity:.25}
+
+  /* ---- gauges (the impact beat) ---- */
+  .gauges{display:none;grid-template-columns:1fr 1fr;gap:10px}
+  .vault.show-gauges .gauges{display:grid;animation:fadeUp .5s ease both}
+  .gauge{background:linear-gradient(180deg,rgba(30,23,12,.9),rgba(18,13,6,.92));
+    border:1px solid rgba(216,166,74,.22);border-radius:10px;padding:11px 14px}
+  .gauge label{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;
+    letter-spacing:.16em;text-transform:uppercase;color:var(--dim);margin-bottom:8px}
+  .gauge .delta{color:var(--accent)}
+  .gtrack{height:6px;border-radius:5px;background:rgba(246,231,196,.08);overflow:hidden;position:relative}
+  .gfill{position:absolute;inset:0 auto 0 0;border-radius:5px;
+    background:linear-gradient(90deg,#8a5a1f,var(--accent));width:100%;transition:width 1.1s cubic-bezier(.3,.8,.3,1)}
+  .gnums{display:flex;justify-content:space-between;margin-top:7px;font-family:var(--mono);font-size:12px;color:var(--ink)}
+  .gnums .was{color:var(--dim);text-decoration:line-through;text-decoration-color:rgba(160,143,108,.5)}
+
+  /* ---- reliability chips (the durability beat) ---- */
+  .chips{display:none;gap:9px;justify-content:center;flex-wrap:wrap}
+  .vault.show-chips .chips{display:flex;animation:fadeUp .5s ease both}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  .chip{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+    color:var(--dim);border:1px solid rgba(246,231,196,.14);border-radius:999px;padding:7px 13px;
+    display:flex;align-items:center;gap:9px;transition:.4s}
+  .chip .led{width:7px;height:7px;border-radius:50%;background:rgba(246,231,196,.2)}
+  .chip.on{color:var(--accent);border-color:rgba(216,166,74,.5)}
+  .chip.on .led{background:var(--accent);box-shadow:0 0 9px var(--accent)}
+
+  .hud{position:absolute;left:22px;bottom:20px;z-index:30;font-family:var(--mono);font-size:12px;letter-spacing:.08em;color:var(--dim)}
+  .hud .v{color:var(--ink)}
+  .meter{position:absolute;right:22px;bottom:20px;z-index:30;display:flex;gap:5px;align-items:center}
+  .meter .seg{width:14px;height:3px;border-radius:2px;background:rgba(246,231,196,.18)}
+  .meter .seg.on{background:var(--accent)}
+
+  .fallback{display:none;padding:96px clamp(28px,7vw,64px);max-width:880px}
+  .fallback .row{display:block;padding:24px 0;border-top:1px solid rgba(246,231,196,.12);background:none;border-radius:0;grid-template-columns:none}
+  .fallback .era{font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);margin-bottom:8px}
+  .fallback .ln{font-size:clamp(22px,3vw,32px);font-variation-settings:'opsz' 70,'wght' 640}
+  .fallback .cue{margin-top:10px;font-family:var(--mono);font-size:13px;color:var(--dim)}
+  body.reduced .wrap{height:auto}
+  body.reduced .cab{position:relative;height:100vh}
+  body.reduced .stations,body.reduced .hud,body.reduced .meter,body.reduced .vault{display:none}
+  body.reduced .fallback{display:block}
+
+  .enter-veil{position:fixed;inset:0;z-index:200;background:#161009;opacity:1;pointer-events:none;transition:opacity 1.2s ease}
+  .enter-veil.off{opacity:0}
+  .exit-veil{position:fixed;inset:0;z-index:200;background:#0a0f1a;opacity:0;pointer-events:none;transition:opacity 1s ease}
+  .exit-veil.on{opacity:1;pointer-events:auto}
+  .exitnote{position:fixed;left:50%;bottom:30px;transform:translateX(-50%);z-index:210;text-align:center;
+    font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim);
+    opacity:0;transition:opacity .5s}
+  .exitnote.on{opacity:1}
+
+  /* manual return — top-centre so it clears the settlement-queue card */
+  .mergeback{position:fixed;left:50%;top:74px;transform:translateX(-50%) translateY(-8px);z-index:210;
+    opacity:0;pointer-events:none;cursor:pointer;font-family:var(--mono);font-size:11px;letter-spacing:.18em;
+    text-transform:uppercase;color:var(--dim);background:rgba(244,237,220,.05);
+    border:1px solid rgba(244,237,220,.2);border-radius:999px;padding:11px 20px;
+    transition:opacity .5s ease,transform .5s ease,color .25s,border-color .25s,box-shadow .25s}
+  .mergeback.show{opacity:1;pointer-events:auto;transform:translateX(-50%)}
+  .mergeback:hover{color:var(--accent);border-color:var(--accent);box-shadow:0 0 18px rgba(216,166,74,.25)}
+  .mergeback b{color:var(--accent);font-weight:500}
+</style>
+</head>
+<body>
+  <div class="enter-veil" id="enterVeil"></div>
+  <div class="exit-veil" id="exitVeil"></div>
+  <div class="exitnote" id="exitNote">merging back to the works line &rarr;</div>
+
+  <div class="mark"><b>shariski</b>.com</div>
+  <a class="backline" href="../shariski-works-line.html?stop=2">&larr; <b>works line</b></a>
+  <div class="corner"><b>case study · bullion</b><br/>the settlement engine · scroll</div>
+
+  <div class="wrap" id="wrap">
+    <div class="cab" id="cab">
+      <canvas id="cv"></canvas>
+      <div class="vig"></div>
+      <div class="uiscrim"></div>
+      <div class="stations" id="stations"></div>
+
+      <div class="vault" id="vault" data-stage="0">
+        <div class="ledger">
+          <div class="ldhead"><span>settlement queue</span><b id="ldtag">one file did everything</b></div>
+          <div class="rows" id="rows"></div>
+        </div>
+        <div class="gauges">
+          <div class="gauge">
+            <label><span>p95 latency</span><span class="delta">&minus;91%</span></label>
+            <div class="gtrack"><i class="gfill" id="latFill"></i></div>
+            <div class="gnums"><span class="was">1,180 ms</span><span id="latNow">106 ms</span></div>
+          </div>
+          <div class="gauge">
+            <label><span>infra cost</span><span class="delta">&minus;17%</span></label>
+            <div class="gtrack"><i class="gfill" id="costFill"></i></div>
+            <div class="gnums"><span class="was">baseline</span><span id="costNow">&minus;17%</span></div>
+          </div>
+        </div>
+        <div class="chips" id="chips">
+          <div class="chip" data-c="lock"><span class="led"></span>distributed lock</div>
+          <div class="chip" data-c="flag"><span class="led"></span>feature flags</div>
+          <div class="chip" data-c="trace"><span class="led"></span>otel tracing</div>
+        </div>
+      </div>
+
+      <div class="hud">bullion · <span class="v" id="tag">the monolith</span></div>
+      <div class="meter" id="meter"></div>
+    </div>
+    <div class="fallback" id="fallback"></div>
+  </div>
+
+  <button class="mergeback" id="mergeback"><b>merge back to the works line</b> &rarr;</button>
+
+  <script src="../rail/engine.js"></script>
+  <script>
+    // grounded in the CV: gold-exchange settlement engine @ Bullion Ecosystem International (2023–2026)
+    const STATIONS = [
+      { era:'bullion · 01', ln:'A settlement engine no one wanted to touch.',  cue:'monolith \u2192 builder \u00b7 execution',          tag:'the monolith' },
+      { era:'bullion · 02', ln:'Gold was settling out of order.',              cue:'Redis ZSet queue replaces Cloud Tasks',            tag:'ordering' },
+      { era:'bullion · 03', ln:'Two currencies, one source of truth.',         cue:'ledger-based IDR / USD sync \u00b7 decimal-safe',   tag:'the ledger' },
+      { era:'bullion · 04', ln:'91% faster. 17% cheaper.',                     cue:'MongoDB query + index optimization',               tag:'the payoff' },
+      { era:'bullion · 05', ln:'Built so it never falls over.',                cue:'locks \u00b7 flags \u00b7 trace context propagation', tag:'durability' }
+    ];
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // ---- queue rows: gold-exchange transactions waiting to settle ----
+    const TX = [
+      { seq:7, pair:'XAU \u2192 IDR', a:'Rp 412.8M' },
+      { seq:3, pair:'IDR \u2192 USD', a:'$ 26,400'  },
+      { seq:9, pair:'XAU \u2192 USD', a:'$ 18,950'  },
+      { seq:1, pair:'USD \u2192 IDR', a:'Rp 88.1M'  },
+      { seq:5, pair:'XAU \u2192 IDR', a:'Rp 301.5M' }
+    ];
+    const SORTED = [1,3,5,7,9];
+    const rowsEl = document.getElementById('rows');
+    const rowEls = TX.map(function(t){
+      const d = document.createElement('div'); d.className='row'; d.dataset.seq=t.seq;
+      d.innerHTML = '<span class="seq">#'+String(t.seq).padStart(2,'0')+'</span>'+
+                    '<span class="pair">'+t.pair+'</span>'+
+                    '<span class="amt">'+t.a+'</span><span class="dot"></span>';
+      rowsEl.appendChild(d); return d;
+    });
+    // row pitch (height 33 + gap 5 = 38). Measured lazily on first reorder via offsetTop
+    // (immune to CSS transforms and to build-time layout returning 0), with a safe fallback.
+    let ROW_H = 0;
+    function rowPitch(){
+      if(!ROW_H && rowEls.length>1){ ROW_H = (rowEls[1].offsetTop - rowEls[0].offsetTop) || 0; }
+      return ROW_H || 38;
+    }
+
+    const meter=document.getElementById('meter');
+    STATIONS.forEach(function(){ const s=document.createElement('span'); s.className='seg'; meter.appendChild(s); });
+    const segs=[].slice.call(meter.children);
+    const tagEl=document.getElementById('tag');
+    const ldtag=document.getElementById('ldtag');
+    const vault=document.getElementById('vault');
+
+    setTimeout(function(){ document.getElementById('enterVeil').classList.add('off'); }, 80);
+
+    // ---- gold vault environment: warm dark, rising gold dust, faint ledger grid ----
+    function makeGoldEnv(){
+      const motes=[]; for(let i=0;i<22;i++) motes.push({nx:Math.random(),ph:Math.random(),sp:0.05+Math.random()*0.12,r:0.5+Math.random()*1.7});
+      return function(env){
+        const {ctx,W,H,time,cur,N}=env;
+        const prog=Math.min(1,N>1?cur/(N-1):0);
+        const g=ctx.createLinearGradient(0,0,0,H);
+        g.addColorStop(0,'#221a0e');g.addColorStop(0.5,'#171108');g.addColorStop(1,'#0c0905');
+        ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+        const cg=ctx.createRadialGradient(W/2,H*0.44,0,W/2,H*0.44,Math.max(W,H)*0.52);
+        cg.addColorStop(0,'rgba(216,166,74,'+(0.06+prog*0.07).toFixed(3)+')');cg.addColorStop(1,'rgba(216,166,74,0)');
+        ctx.fillStyle=cg;ctx.fillRect(0,0,W,H);
+        // faint ledger grid on the side walls
+        ctx.strokeStyle='rgba(246,231,196,0.045)';ctx.lineWidth=1;
+        for(let i=1;i<9;i++){const y=H*(i/9);ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W*0.05,y);ctx.moveTo(W,y);ctx.lineTo(W*0.95,y);ctx.stroke();}
+        // rising gold dust
+        ctx.save();ctx.globalCompositeOperation='lighter';
+        for(const m of motes){
+          const f=((time*m.sp+m.ph)%1+1)%1, y=H-f*H*0.9, x=m.nx*W+Math.sin(time*0.5+m.ph*6.28)*14, a=(1-f)*0.4;
+          ctx.fillStyle='rgba(240,200,120,'+a.toFixed(3)+')';ctx.beginPath();ctx.arc(x,y,m.r,0,6.28);ctx.fill();
+        }
+        ctx.restore();
+        const vg=ctx.createRadialGradient(W/2,H*0.42,H*0.2,W/2,H*0.5,H*0.92);
+        vg.addColorStop(0,'rgba(10,7,3,0)');vg.addColorStop(1,'rgba(10,7,3,0.58)');
+        ctx.fillStyle=vg;ctx.fillRect(0,0,W,H);
+      };
+    }
+
+    // ---- per sub-stop: the queue tells the case study ----
+    let fx=null;
+    function clearRows(){ rowEls.forEach(function(r){ r.classList.remove('lit','err','muted'); r.style.transform='none'; }); }
+    function order(seqList){
+      // move each row to the slot its seq occupies in seqList
+      const pitch = rowPitch();
+      rowEls.forEach(function(r){
+        const seq=parseInt(r.dataset.seq,10);
+        const from=TX.findIndex(function(t){return t.seq===seq;});
+        const to=seqList.indexOf(seq);
+        r.style.transform='translateY('+((to-from)*pitch)+'px)';
+      });
+    }
+    function setStage(i){
+      const s=STATIONS[i]; if(!s) return;
+      vault.dataset.stage=i; tagEl.textContent=s.tag;
+      segs.forEach(function(seg,j){ seg.classList.toggle('on', j<=i); });
+      clearRows(); if(fx){clearInterval(fx);fx=null;}
+      vault.classList.remove('show-gauges','show-chips');
+
+      if(i===0){            // monolith → modular: split the fused block into two phases
+        ldtag.textContent='monolith \u2192 builder \u00b7 execution';
+        rowEls.forEach(function(r,k){ if(k<3) r.classList.add('lit'); });
+      } else if(i===1){     // out of order → Redis ZSet ordered
+        ldtag.textContent='out of order';
+        let phase=0;
+        const run=function(){
+          if(phase===0){     // chaos: random rows flash as mis-ordered
+            clearRows(); for(let k=0;k<2;k++) rowEls[(Math.random()*rowEls.length)|0].classList.add('err');
+            phase=1;
+          } else {           // ZSet sorts them ascending, settled gold
+            clearRows(); ldtag.textContent='Redis ZSet \u00b7 ordered';
+            order(SORTED); rowEls.forEach(function(r){ r.classList.add('lit'); });
+            phase=0; ldtag.textContent='out of order';
+          }
+        };
+        run(); fx=setInterval(run,1500);
+      } else if(i===2){     // ledger sync IDR/USD — keep sorted, settle pair by pair
+        ldtag.textContent='ledger \u00b7 IDR / USD reconciled';
+        order(SORTED);
+        let k=0; fx=setInterval(function(){
+          if(k<rowEls.length){ const idx=SORTED[k];
+            rowEls.forEach(function(r){ if(parseInt(r.dataset.seq,10)===idx) r.classList.add('lit'); });
+            k++;
+          } else { clearInterval(fx); fx=null; }
+        },260);
+      } else if(i===3){     // the payoff — gauges drop in
+        ldtag.textContent='optimized';
+        order(SORTED); rowEls.forEach(function(r){ r.classList.add('lit'); });
+        vault.classList.add('show-gauges');
+        document.getElementById('latFill').style.width='100%';
+        document.getElementById('costFill').style.width='100%';
+        requestAnimationFrame(function(){ requestAnimationFrame(function(){
+          document.getElementById('latFill').style.width='9%';
+          document.getElementById('costFill').style.width='83%';
+        }); });
+      } else if(i===4){     // durability — reliability chips light one by one
+        ldtag.textContent='hardened';
+        order(SORTED); rowEls.forEach(function(r){ r.classList.add('lit'); });
+        vault.classList.add('show-chips');
+        const chips=[].slice.call(document.querySelectorAll('#chips .chip'));
+        chips.forEach(function(c){ c.classList.remove('on'); });
+        let k=0; fx=setInterval(function(){ if(k<chips.length){ chips[k].classList.add('on'); k++; } else { clearInterval(fx); fx=null; } },420);
+      }
+    }
+    function onStop(info){
+      if(info){ setStage(info.index);
+        document.getElementById('mergeback').classList.toggle('show', info.index >= STATIONS.length-1);
+      }
+    }
+
+    RAIL.applyConfig({ world:'gold' });
+    RAIL.init({ stations: STATIONS, branches:false, drawEnv: makeGoldEnv(), onStop: onStop });
+    if (reduce){
+      setStage(0);
+      const fb=document.getElementById('fallback');
+      STATIONS.forEach(function(s){ const d=document.createElement('div'); d.className='row';
+        d.innerHTML='<div class="era">'+s.era+'</div><div class="ln">'+s.ln+'</div><div class="cue">'+s.cue+'</div>';
+        fb.appendChild(d);
+      });
+    }
+
+    // ---- return to the works line: only when the user chooses (no auto-merge) ----
+    // The final stop rests in focus. Merge happens when you keep scrolling PAST it,
+    // or tap the explicit control.
+    let exiting=false, over=0;
+    function leaveToWorksLine(){
+      if(exiting) return; exiting=true;
+      document.getElementById('exitNote').classList.add('on');
+      document.getElementById('exitVeil').classList.add('on');
+      setTimeout(function(){ location.href='../shariski-works-line.html?stop=3'; }, 1150);
+    }
+    document.getElementById('mergeback').addEventListener('click', leaveToWorksLine);
+    function atEnd(){ return (innerHeight + window.scrollY) >= (document.body.scrollHeight - 4); }
+    addEventListener('wheel', function(e){
+      if(exiting) return;
+      if(atEnd() && e.deltaY>0){ over+=e.deltaY; document.getElementById('exitNote').classList.add('on');
+        if(over>240) leaveToWorksLine(); }
+      else { over=0; if(!atEnd()) document.getElementById('exitNote').classList.remove('on'); }
+    }, {passive:true});
+    let touchY=null;
+    addEventListener('touchstart', function(e){ touchY=e.touches[0].clientY; }, {passive:true});
+    addEventListener('touchmove', function(e){
+      if(exiting||touchY==null) return;
+      const dy=touchY-e.touches[0].clientY; touchY=e.touches[0].clientY;
+      if(atEnd() && dy>0){ over+=dy*1.4; document.getElementById('exitNote').classList.add('on');
+        if(over>180) leaveToWorksLine(); }
+    }, {passive:true});
+  </script>
+</body>
+</html>

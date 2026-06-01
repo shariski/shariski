@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>shariski.com — teardown</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300..800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  /* same engine + design system as the main line; departure is the origin / operating system */
+  :root{
+    --ink:#e9edf8; --dim:#7c86a6; --accent:#88a6ff;
+    --display:'Bricolage Grotesque',system-ui,sans-serif;
+    --mono:'IBM Plex Mono',ui-monospace,monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%}
+  body{background:#060912;color:var(--ink);font-family:var(--display);
+    -webkit-font-smoothing:antialiased;overflow-x:hidden}
+
+  .mark{position:fixed;top:18px;left:20px;z-index:120;font-family:var(--mono);font-size:11px;
+    letter-spacing:.18em;text-transform:uppercase;color:var(--dim)}
+  .mark b{color:var(--ink);font-weight:500}
+  .corner{position:fixed;top:18px;right:20px;font-family:var(--mono);font-size:11px;letter-spacing:.04em;
+    color:var(--dim);z-index:120;text-align:right;line-height:1.6}
+  .corner b{color:var(--accent);font-weight:500}
+  .backline{position:fixed;top:42px;left:20px;z-index:120;font-family:var(--mono);font-size:11px;
+    letter-spacing:.1em;color:var(--dim);text-decoration:none}
+  .backline:hover{color:var(--accent)}
+  .backline b{color:var(--ink);font-weight:500}
+
+  .wrap{position:relative;height:900vh}
+  .cab{position:sticky;top:0;height:100vh;overflow:hidden;background:#060912}
+  canvas{position:absolute;inset:0;z-index:2}
+  .vig{position:absolute;inset:0;z-index:3;pointer-events:none;
+    background:radial-gradient(circle at 50% 42%,transparent 46%,rgba(3,5,11,.62) 100%)}
+  .uiscrim{position:absolute;left:0;right:0;bottom:0;height:42%;z-index:7;pointer-events:none;
+    background:linear-gradient(transparent,rgba(4,6,13,.72))}
+
+  .stations{position:absolute;inset:0;z-index:5}
+  .st{position:absolute;left:0;top:0;width:min(88vw,940px);text-align:center;
+    transform-origin:50% 50%;will-change:transform,opacity,filter}
+  .st .idx{font-family:var(--mono);font-size:11px;letter-spacing:.34em;color:var(--dim);margin-bottom:12px;opacity:0;transition:opacity .35s ease}
+  .st .era{font-family:var(--mono);font-size:14px;letter-spacing:.2em;text-transform:uppercase;color:var(--accent);margin-bottom:16px}
+  .st .ln{font-size:clamp(23px,3.5vw,44px);line-height:1.1;letter-spacing:-.025em;
+    font-variation-settings:'opsz' 88,'wght' 680;text-shadow:0 2px 30px rgba(3,5,11,.9);text-wrap:balance}
+  .st .ln em{font-style:italic;color:var(--accent);font-variation-settings:'opsz' 88,'wght' 600}
+  .st .enter{margin-top:16px;font-family:var(--mono);font-size:12px;letter-spacing:.2em;text-transform:lowercase;
+    color:var(--dim);opacity:0;transition:opacity .4s ease}
+  .st.is-focus .idx{opacity:.85}
+  .st.is-focus .enter{opacity:1}
+
+  /* ---- exploded teardown: the 8 components of the operating system ---- */
+  .teardown{position:absolute;left:50%;bottom:64px;transform:translateX(-50%);z-index:8;
+    display:flex;gap:clamp(5px,1.5vw,15px);align-items:flex-end}
+  .module{display:flex;flex-direction:column;align-items:center;gap:8px;opacity:.42;
+    transition:opacity .45s ease,transform .45s cubic-bezier(.3,0,.2,1)}
+  .module .plate{width:clamp(28px,5.4vw,54px);height:clamp(40px,8vh,68px);border-radius:6px;
+    border:1px solid rgba(136,166,255,.22);background:rgba(136,166,255,.04);
+    display:grid;place-items:center;font-family:var(--mono);font-size:clamp(11px,1.5vw,14px);color:var(--dim);
+    transition:.4s}
+  .module .lab{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);transition:.4s}
+  .module.passed{opacity:.7}
+  .module.passed .plate{border-color:rgba(136,166,255,.4)}
+  .module.active{opacity:1;transform:translateY(-16px)}
+  .module.active .plate{border-color:var(--accent);color:var(--accent);background:rgba(136,166,255,.12);box-shadow:0 0 18px rgba(136,166,255,.42)}
+  .module.active .lab{color:var(--ink)}
+
+  .hud{position:absolute;left:22px;bottom:20px;z-index:30;font-family:var(--mono);font-size:12px;letter-spacing:.08em;color:var(--dim)}
+  .hud .v{color:var(--ink)}
+  .meter{position:absolute;right:22px;bottom:20px;z-index:30;display:flex;gap:4px;align-items:center}
+  .meter .seg{width:11px;height:3px;border-radius:2px;background:rgba(233,237,248,.18)}
+  .meter .seg.on{background:var(--accent)}
+
+  .fallback{display:none;padding:96px clamp(28px,7vw,64px);max-width:880px}
+  .fallback .thesis{font-size:clamp(26px,4vw,40px);line-height:1.1;letter-spacing:-.03em;font-variation-settings:'opsz' 90,'wght' 720;margin-bottom:10px}
+  .fallback .sub{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin-bottom:40px}
+  .fallback .row{padding:22px 0;border-top:1px solid rgba(233,237,248,.12)}
+  .fallback .era{font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);margin-bottom:8px}
+  .fallback .ln{font-size:clamp(20px,3vw,28px);font-variation-settings:'opsz' 70,'wght' 600}
+  body.reduced .wrap{height:auto}
+  body.reduced .cab{position:relative;height:100vh}
+  body.reduced .stations,body.reduced .teardown,body.reduced .hud,body.reduced .meter{display:none}
+  body.reduced .fallback{display:block}
+
+  .enter-veil{position:fixed;inset:0;z-index:200;background:#060912;opacity:1;pointer-events:none;transition:opacity 1.2s ease}
+  .enter-veil.off{opacity:0}
+  .exit-veil{position:fixed;inset:0;z-index:200;background:#04050e;opacity:0;pointer-events:none;transition:opacity 1s ease}
+  .exit-veil.on{opacity:1;pointer-events:auto}
+  .exitnote{position:fixed;left:50%;bottom:30px;transform:translateX(-50%);z-index:210;text-align:center;
+    font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim);
+    opacity:0;transition:opacity .5s}
+  .exitnote.on{opacity:1}
+
+  /* manual return — top-centre, clears the teardown strip at the bottom */
+  .mergeback{position:fixed;left:50%;top:74px;transform:translateX(-50%) translateY(-8px);z-index:210;
+    opacity:0;pointer-events:none;cursor:pointer;font-family:var(--mono);font-size:11px;letter-spacing:.18em;
+    text-transform:uppercase;color:var(--dim);background:rgba(233,237,248,.05);
+    border:1px solid rgba(233,237,248,.2);border-radius:999px;padding:11px 20px;
+    transition:opacity .5s ease,transform .5s ease,color .25s,border-color .25s,box-shadow .25s}
+  .mergeback.show{opacity:1;pointer-events:auto;transform:translateX(-50%)}
+  .mergeback:hover{color:var(--accent);border-color:var(--accent);box-shadow:0 0 18px rgba(136,166,255,.25)}
+  .mergeback b{color:var(--accent);font-weight:500}
+</style>
+</head>
+<body>
+  <div class="enter-veil" id="enterVeil"></div>
+  <div class="exit-veil" id="exitVeil"></div>
+  <div class="exitnote" id="exitNote">leaving for the first stop &rarr;</div>
+
+  <div class="mark"><b>shariski</b>.com</div>
+  <a class="backline" href="../shariski-rail-journey.html?stop=0">&larr; <b>main line</b></a>
+  <div class="corner"><b>departure · teardown</b><br/>an operating system for learning hard things</div>
+
+  <div class="wrap" id="wrap">
+    <div class="cab" id="cab">
+      <canvas id="cv"></canvas>
+      <div class="vig"></div>
+      <div class="uiscrim"></div>
+      <div class="stations" id="stations"></div>
+
+      <div class="teardown" id="teardown"></div>
+
+      <div class="hud">component · <span class="v" id="tag">decompose</span></div>
+      <div class="meter" id="meter"></div>
+    </div>
+    <div class="fallback" id="fallback"></div>
+  </div>
+
+  <button class="mergeback" id="mergeback">on to the first stop &rarr;</button>
+
+  <script src="../rail/engine.js"></script>
+  <script>
+    // the method — decision logic at every layer, not a checklist (8 components)
+    const STATIONS = [
+      { era:'01 · decompose',  short:'decompose',  ln:'Find the piece that collapses everything if it fails. Build that first, alone.', cue:'what do i master first?' },
+      { era:'02 · capture',    short:'capture',    ln:'Don\u2019t record yourself on day one. Wait for the itch: <em>this could be sharper.</em>', cue:'when do i investigate?' },
+      { era:'03 · compare',    short:'compare',    ln:'Pull the one reference that hits your exact gap. Never scroll tutorials hoping.', cue:'what\u2019s the standard?' },
+      { era:'04 · identify',   short:'gap',        ln:'Model how it works \u2014 then fix by impact \u00d7 fixability, not by guess.', cue:'which gap first?' },
+      { era:'05 · iterate',    short:'iterate',    ln:'When identity and drive ignite, run the 24-hour loop. Gas hard, brake at the plateau.', cue:'when do i go all in?' },
+      { era:'06 · track',      short:'track',      ln:'Match the metric to the skill. If the tracking has friction, don\u2019t track at all.', cue:'what do i monitor?' },
+      { era:'07 · expand',     short:'expand',     ln:'New domains arrive by invitation, not strategy. Let the body \u2014 not boredom \u2014 rotate them.', cue:'when do i add a domain?' },
+      { era:'08 · experiment', short:'experiment', ln:'Give it honest time, then judge. When the body vetoes the expert, trust the body.', cue:'does it actually work?' }
+    ];
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const meter=document.getElementById('meter');
+    STATIONS.forEach(()=>{ const s=document.createElement('span'); s.className='seg'; meter.appendChild(s); });
+    const segs=[...meter.children];
+    const tagEl=document.getElementById('tag');
+
+    setTimeout(()=>{ document.getElementById('enterVeil').classList.add('off'); }, 80);
+
+    // exploded teardown strip — an index of the 8 components
+    const tear=document.getElementById('teardown'); const modules=[];
+    STATIONS.forEach((s,i)=>{
+      const m=document.createElement('div'); m.className='module';
+      m.innerHTML='<div class="plate">'+String(i+1).padStart(2,'0')+'</div><div class="lab">'+s.short+'</div>';
+      tear.appendChild(m); modules.push(m);
+    });
+
+    // origin / blueprint environment drawn into the engine canvas
+    function makeBlueprintEnv(){
+      const stars=[]; for(let i=0;i<70;i++) stars.push({nx:Math.random(),ny:Math.random()*0.8,r:0.4+Math.random()*1.3,tw:0.5+Math.random()*1.8,ph:Math.random()*6.28});
+      return function(env){
+        const {ctx,W,H,time,cur,N}=env;
+        const g=ctx.createLinearGradient(0,0,0,H);
+        g.addColorStop(0,'#0a0f1c');g.addColorStop(0.5,'#070a14');g.addColorStop(1,'#04060d');
+        ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+        // faint blueprint grid drifting slowly
+        ctx.strokeStyle='rgba(136,166,255,0.05)';ctx.lineWidth=1;
+        const gap=Math.max(60,W/16), off=(time*8)%gap;
+        for(let x=-off;x<W;x+=gap){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+        for(let y=(time*5)%gap;y<H*0.7;y+=gap){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+        // central origin glow
+        const cg=ctx.createRadialGradient(W/2,H*0.4,0,W/2,H*0.4,Math.max(W,H)*0.55);
+        cg.addColorStop(0,'rgba(120,150,255,0.10)');cg.addColorStop(1,'rgba(120,150,255,0)');
+        ctx.fillStyle=cg;ctx.fillRect(0,0,W,H);
+        // faint stars (origin = the same sky as the main line)
+        for(const s of stars){
+          const y=s.ny*H*0.7; if(y>H*0.7) continue;
+          const a=(0.3+0.5*Math.sin(time*s.tw+s.ph))*Math.max(0,1-(y/(H*0.7)));
+          ctx.fillStyle='rgba(224,232,255,'+Math.max(0,a).toFixed(3)+')';
+          ctx.beginPath();ctx.arc(s.nx*W,y,s.r,0,6.28);ctx.fill();
+        }
+        const vg=ctx.createRadialGradient(W/2,H*0.44,H*0.2,W/2,H*0.5,H*0.92);
+        vg.addColorStop(0,'rgba(4,6,13,0)');vg.addColorStop(1,'rgba(4,6,13,0.5)');
+        ctx.fillStyle=vg;ctx.fillRect(0,0,W,H);
+      };
+    }
+
+    function onStop(info){
+      if(!info) return; const i=info.index, s=STATIONS[i]; if(!s) return;
+      tagEl.textContent=s.short;
+      segs.forEach((seg,j)=>seg.classList.toggle('on', j<=i));
+      modules.forEach((m,j)=>{ m.classList.toggle('active', j===i); m.classList.toggle('passed', j<i); });
+      document.getElementById('mergeback').classList.toggle('show', i >= STATIONS.length-1);
+    }
+
+    RAIL.applyConfig({ world:'midnight' });
+    RAIL.init({ stations: STATIONS, branches:false, drawEnv: makeBlueprintEnv(), onStop: onStop });
+
+    if (reduce){
+      const fb=document.getElementById('fallback');
+      fb.insertAdjacentHTML('afterbegin',
+        '<div class="thesis">Take it apart. Make it efficient. Repeat.</div>'+
+        '<div class="sub">teardown · decision logic at every layer, not a checklist</div>');
+    }
+
+    // ---- return to the main line: only when the user chooses (no auto-merge) ----
+    // The final stop rests in focus. Merge happens when you keep scrolling PAST it,
+    // or tap the explicit control.
+    let exiting=false, over=0;
+    function leaveToMainLine(){
+      if(exiting) return; exiting=true;
+      document.getElementById('exitNote').classList.add('on');
+      document.getElementById('exitVeil').classList.add('on');
+      setTimeout(()=>{ location.href='../shariski-rail-journey.html?stop=1'; }, 1150);
+    }
+    document.getElementById('mergeback').addEventListener('click', leaveToMainLine);
+    function atEnd(){ return (innerHeight+window.scrollY) >= (document.body.scrollHeight-4); }
+    addEventListener('wheel', (e)=>{
+      if(exiting) return;
+      if(atEnd() && e.deltaY>0){ over+=e.deltaY; document.getElementById('exitNote').classList.add('on');
+        if(over>240) leaveToMainLine(); }
+      else { over=0; if(!atEnd()) document.getElementById('exitNote').classList.remove('on'); }
+    }, {passive:true});
+    let touchY=null;
+    addEventListener('touchstart', (e)=>{ touchY=e.touches[0].clientY; }, {passive:true});
+    addEventListener('touchmove', (e)=>{
+      if(exiting||touchY==null) return;
+      const dy=touchY-e.touches[0].clientY; touchY=e.touches[0].clientY;
+      if(atEnd() && dy>0){ over+=dy*1.4; document.getElementById('exitNote').classList.add('on');
+        if(over>180) leaveToMainLine(); }
+    }, {passive:true});
+  </script>
+</body>
+</html>

@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>shariski.com — the depot</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300..800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --ink:#ece8f6; --dim:#8e85a8; --accent:#b98cff;
+    --display:'Bricolage Grotesque',system-ui,sans-serif;
+    --mono:'IBM Plex Mono',ui-monospace,monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{min-height:100%}
+  body{background:#0c0a16;color:var(--ink);font-family:var(--display);
+    -webkit-font-smoothing:antialiased;overflow-x:hidden;min-height:100vh}
+
+  canvas#bg{position:fixed;inset:0;z-index:1}
+  .vig{position:fixed;inset:0;z-index:2;pointer-events:none;
+    background:radial-gradient(circle at 50% 38%,transparent 44%,rgba(6,5,12,.66) 100%)}
+
+  .mark{position:fixed;top:18px;left:20px;z-index:60;font-family:var(--mono);font-size:11px;
+    letter-spacing:.18em;text-transform:uppercase;color:var(--dim)}
+  .mark b{color:var(--ink);font-weight:500}
+  .corner{position:fixed;top:18px;right:20px;font-family:var(--mono);font-size:11px;letter-spacing:.04em;
+    color:var(--dim);z-index:60;text-align:right;line-height:1.6}
+  .corner b{color:var(--accent);font-weight:500}
+
+  .enter-veil{position:fixed;inset:0;z-index:96;background:#0c0a16;opacity:1;pointer-events:none;transition:opacity 1s ease}
+  .enter-veil.off{opacity:0}
+
+  .stage{position:relative;z-index:5;min-height:100vh;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;padding:96px 22px 120px;gap:30px}
+  .head{width:min(760px,94vw);text-align:left}
+  .kicker{font-family:var(--mono);font-size:12px;letter-spacing:.26em;text-transform:uppercase;color:var(--accent)}
+  .title{margin-top:14px;font-size:clamp(34px,6vw,62px);line-height:1.0;letter-spacing:-.035em;
+    font-variation-settings:'opsz' 96,'wght' 760;text-wrap:balance}
+  .sub{margin-top:16px;font-size:clamp(15px,2vw,17px);line-height:1.65;color:var(--ink);opacity:.8;
+    max-width:56ch;text-wrap:pretty}
+  .sub .ag{color:var(--accent)}
+
+  /* ---- the yard board (split-flap departures) ---- */
+  .board{width:min(760px,94vw);background:linear-gradient(180deg,rgba(22,18,34,.94),rgba(13,11,22,.96));
+    border:1px solid rgba(185,140,255,.22);border-radius:14px;overflow:hidden;
+    box-shadow:0 40px 110px rgba(0,0,0,.55),inset 0 1px 0 rgba(236,232,246,.05)}
+  .board-top{display:flex;justify-content:space-between;align-items:center;padding:14px 20px;
+    border-bottom:1px solid rgba(185,140,255,.16);font-family:var(--mono);font-size:11px;
+    letter-spacing:.22em;text-transform:uppercase;color:var(--dim)}
+  .board-top b{color:var(--accent);font-weight:500}
+  .board-top .live{display:flex;align-items:center;gap:8px}
+  .board-top .live .d{width:6px;height:6px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent)}
+  @media (prefers-reduced-motion: no-preference){.board-top .live .d{animation:pd 2.4s ease-in-out infinite}}
+  @keyframes pd{0%,100%{opacity:1}50%{opacity:.35}}
+
+  .brow{display:grid;grid-template-columns:84px 1fr auto;align-items:center;gap:18px;width:100%;
+    padding:18px 20px;border:none;border-top:1px solid rgba(236,232,246,.07);background:none;cursor:pointer;
+    text-align:left;color:var(--ink);font-family:var(--display);transition:background .2s}
+  .brow:first-of-type{border-top:none}
+  .brow:hover{background:rgba(185,140,255,.06)}
+  .brow .flap{font-family:var(--mono);font-size:12px;letter-spacing:.08em;color:var(--ink);
+    background:rgba(0,0,0,.5);border:1px solid rgba(236,232,246,.1);border-radius:5px;padding:8px 6px;text-align:center}
+  .brow .mid{min-width:0}
+  .brow .nm{font-size:clamp(19px,2.6vw,25px);line-height:1.08;letter-spacing:-.02em;
+    font-variation-settings:'opsz' 60,'wght' 660;display:flex;align-items:center;gap:11px;flex-wrap:wrap}
+  .brow .ag{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);
+    border:1px solid rgba(185,140,255,.4);border-radius:999px;padding:3px 8px;white-space:nowrap}
+  .brow .ds{margin-top:5px;font-family:var(--mono);font-size:12.5px;letter-spacing:.01em;color:var(--dim);
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .brow .stat{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--accent);text-align:right;display:flex;align-items:center;gap:9px;white-space:nowrap}
+  .brow .stat .arr{color:var(--dim);transition:transform .25s,color .25s}
+  .brow:hover .stat .arr{transform:translateX(4px);color:var(--accent)}
+
+  .foot{width:min(760px,94vw);font-family:var(--mono);font-size:11px;letter-spacing:.04em;color:var(--dim);
+    display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;text-wrap:pretty;line-height:1.6}
+
+  /* ---- detail panel ---- */
+  .scrim{position:fixed;inset:0;z-index:80;background:rgba(6,5,12,.64);backdrop-filter:blur(3px);
+    opacity:0;pointer-events:none;transition:opacity .4s ease}
+  .scrim.on{opacity:1;pointer-events:auto}
+  .panel{position:fixed;top:0;right:0;height:100%;width:min(560px,93vw);z-index:81;
+    background:linear-gradient(180deg,rgba(22,18,34,.98),rgba(11,9,18,.99));
+    border-left:1px solid rgba(185,140,255,.2);box-shadow:-40px 0 80px rgba(0,0,0,.5);
+    transform:translateX(100%);transition:transform .5s cubic-bezier(.2,.8,.2,1);
+    display:flex;flex-direction:column;padding:clamp(28px,5vw,52px);overflow-y:auto}
+  .panel.on{transform:translateX(0)}
+  .panel .ptop{display:flex;justify-content:space-between;align-items:center;
+    font-family:var(--mono);font-size:11px;letter-spacing:.28em;text-transform:uppercase;color:var(--dim)}
+  .panel .x{cursor:pointer;color:var(--dim);font-size:20px;line-height:1;border:1px solid rgba(255,255,255,.14);
+    width:34px;height:34px;border-radius:50%;display:grid;place-items:center;transition:.25s;background:none}
+  .panel .x:hover{color:var(--ink);border-color:var(--accent)}
+  .panel .pera{margin-top:36px;font-family:var(--mono);font-size:13px;letter-spacing:.2em;text-transform:uppercase;color:var(--accent)}
+  .panel .ptitle{margin-top:12px;font-size:clamp(28px,4.2vw,40px);line-height:1.04;letter-spacing:-.03em;
+    font-variation-settings:'opsz' 80,'wght' 720;text-wrap:balance}
+  .panel .ptag{margin-top:12px;font-size:17px;line-height:1.5;color:var(--ink);opacity:.92;text-wrap:pretty;
+    font-variation-settings:'wght' 560}
+  .panel .plabel{margin-top:26px;font-family:var(--mono);font-size:10.5px;letter-spacing:.18em;
+    text-transform:uppercase;color:var(--dim)}
+  .panel .pbody{margin-top:10px;color:var(--ink);opacity:.82;font-size:15.5px;line-height:1.72;max-width:46ch;text-wrap:pretty}
+  .panel .plist{margin-top:8px;display:flex;flex-direction:column}
+  .panel .pli{display:flex;gap:13px;padding:12px 0;border-top:1px solid rgba(255,255,255,.09);
+    font-size:14.5px;line-height:1.5;opacity:.86;text-wrap:pretty}
+  .panel .pli .b{color:var(--accent);flex:none;font-family:var(--mono);font-size:12px;margin-top:2px}
+  .panel .pstack{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px}
+  .panel .tag{font-family:var(--mono);font-size:11px;letter-spacing:.04em;color:var(--dim);
+    border:1px solid rgba(255,255,255,.12);border-radius:999px;padding:6px 11px}
+  .panel .agbadge{margin-top:24px;display:flex;align-items:center;gap:11px;
+    background:rgba(185,140,255,.07);border:1px solid rgba(185,140,255,.28);border-radius:10px;padding:13px 15px;
+    font-family:var(--mono);font-size:12px;letter-spacing:.02em;color:var(--ink);line-height:1.5}
+  .panel .agbadge .gl{color:var(--accent);font-size:15px}
+  .panel .agbadge b{color:var(--accent);font-weight:500}
+  .panel .prepos{margin-top:18px;display:flex;flex-direction:column;gap:9px}
+  .panel .repo{display:flex;align-items:center;justify-content:space-between;gap:14px;text-decoration:none;
+    color:var(--ink);background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.12);border-radius:9px;
+    padding:13px 16px;transition:.22s;font-family:var(--mono);font-size:12.5px;letter-spacing:.02em}
+  .panel .repo:hover{border-color:var(--accent);color:var(--accent);background:rgba(185,140,255,.06)}
+  .panel .repo .gh{color:var(--dim);transition:color .22s}
+  .panel .repo:hover .gh{color:var(--accent)}
+  .panel .pnav{margin-top:auto;display:flex;gap:10px;padding-top:28px}
+  .panel .pnav button{flex:1;cursor:pointer;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.12);
+    color:var(--ink);font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+    padding:14px;border-radius:8px;transition:.25s}
+  .panel .pnav button:hover{border-color:var(--accent);color:var(--accent)}
+  .panel .pnav button:disabled{opacity:.3;cursor:default;border-color:rgba(255,255,255,.08)}
+</style>
+</head>
+<body>
+  <canvas id="bg"></canvas>
+  <div class="vig"></div>
+  <div class="enter-veil" id="enterVeil"></div>
+
+  <div class="mark"><b>shariski</b>.com</div>
+  <div class="corner"><b>the depot</b><br/>recent builds &middot; stabled &amp; shipping</div>
+
+  <div class="stage">
+    <div class="head">
+      <div class="kicker">the depot</div>
+      <h1 class="title">Rolling stock, shipped fast.</h1>
+      <p class="sub">The yard where my recent builds are stabled — small products, each one chasing a real itch of mine. All <span class="ag">built agentically with Claude Code</span>, start to finish, over the last couple of weeks. Pick a unit to see what it does.</p>
+    </div>
+
+    <div class="board" id="board">
+      <div class="board-top"><span>depot &middot; <b>now stabling</b></span>
+        <span class="live"><span class="d"></span>4 units</span></div>
+      <div id="rows"></div>
+    </div>
+
+    <div class="foot">
+      <span>shariski.com &middot; the depot</span>
+      <span>manual hands · agent muscle · two-week turns</span>
+    </div>
+  </div>
+
+  <!-- detail panel -->
+  <div class="scrim" id="scrim"></div>
+  <aside class="panel" id="panel" aria-hidden="true">
+    <div class="ptop"><span id="p-idx">01 / 04</span><button class="x" id="p-close" aria-label="close">&times;</button></div>
+    <div class="pera" id="p-era">build</div>
+    <div class="ptitle" id="p-title">title</div>
+    <div class="ptag" id="p-tagline"></div>
+    <div class="plabel">the itch</div>
+    <div class="pbody" id="p-body"></div>
+    <div class="plabel">what it does</div>
+    <div class="plist" id="p-list"></div>
+    <div class="pstack" id="p-stack"></div>
+    <div class="agbadge"><span class="gl">&#8984;</span><span id="p-ag"></span></div>
+    <div class="prepos" id="p-repos"></div>
+    <div class="pnav">
+      <button id="p-prev">&larr; prev unit</button>
+      <button id="p-next">next unit &rarr;</button>
+    </div>
+  </aside>
+
+  <script>window.SHARISKI_LINE = 'depot';</script>
+  <script>
+    // ---- the four recent builds (grounded in the user's notes + repos) ----
+    const BUILDS = [
+      { code:'RR-01', name:'rain-radar', status:'in service', era:'build · agentic',
+        tagline:'Never get caught in Bogor rain again.',
+        desc:'Per-waypoint rain forecasting along your route.',
+        problem:'I live in Bogor — the rain city — and I ride a motorbike. A forecast that says “clear” still leaves you soaked halfway through a trip. The real risk isn’t the city average; it’s each point along the way.',
+        points:[
+          'Forecasts rain at every waypoint on your actual route — not just origin and destination.',
+          'Tells you whether to pack the raincoat, and where on the trip you’ll likely need it.',
+          'Split into a frontend app and a dedicated backend service.'
+        ],
+        stack:['routing','weather data','waypoints','frontend + backend'],
+        ag:'Architecture, the waypoint forecasting logic, and both services — designed and built agentically with Claude Code.',
+        repos:[{l:'rain-radar (frontend)',u:'https://github.com/shariski/rain-radar'},
+               {l:'rain-radar-backend',u:'https://github.com/shariski/rain-radar-backend'}] },
+
+      { code:'IG-02', name:'ig-pulse', status:'in service', era:'build · agentic',
+        tagline:'Read the room on your Instagram.',
+        desc:'Comment sentiment & word-frequency for creators.',
+        problem:'Creators can see likes and follower counts, but not what their audience actually feels. The real signal is buried in the comments — and nobody reads thousands of them by hand.',
+        points:[
+          'Analyzes IG comment sentiment so creators can see how their audience really reacts.',
+          'Surfaces word-frequency to reveal recurring themes and the language people use.',
+          'A lightweight take on social listening — “drone emprit” energy, focused on one account.'
+        ],
+        stack:['sentiment analysis','NLP','word frequency'],
+        ag:'The analysis pipeline and dashboard were built agentically with Claude Code.',
+        repos:[{l:'ig-pulse',u:'https://github.com/shariski/ig-pulse'}] },
+
+      { code:'PD-03', name:'padanan', status:'trial', era:'build · agentic',
+        tagline:'Nail the English technical interview.',
+        desc:'Speech-to-text + LLM coaching for interviews.',
+        problem:'I’m a native Indonesian speaker. In English technical interviews I know the answer — I just lose it in translation. The gap is language, not knowledge.',
+        points:[
+          'Transcribes your spoken answer with OpenAI Whisper.',
+          'A Qwen model evaluates it — lexical paraphrase plus a more precise, correct answer.',
+          'A practice loop for sounding sharp and accurate under pressure.'
+        ],
+        stack:['OpenAI Whisper','Qwen (evaluator)','speech-to-text'],
+        ag:'Wiring Whisper to the Qwen evaluator and the feedback loop — built agentically with Claude Code.',
+        repos:[{l:'padanan',u:'https://github.com/shariski/padanan'}] },
+
+      { code:'FPL-04', name:'fpl-autopilot', status:'auto', era:'build · agentic',
+        tagline:'Stay in the FPL race, even when you go quiet.',
+        desc:'Manual / hybrid / auto for Fantasy Premier League.',
+        problem:'My FPL consistency falls apart mid-season. Miss a couple of gameweeks and you bleed rank you never claw back. The cost of going quiet is brutal.',
+        points:[
+          'Keeps your squad managed so you don’t fall far behind when you’re inactive.',
+          'Three modes — manual, hybrid, auto — to dial in how much you hand over.',
+          'Built to protect your rank through the weeks you can’t pay attention.'
+        ],
+        stack:['FPL API','optimization','schedulers'],
+        ag:'Modes, the optimizer, and scheduling were built agentically with Claude Code.',
+        repos:[{l:'fpl-autopilot',u:'https://github.com/shariski/fpl-autopilot'}] }
+    ];
+
+    // ---- build the board ----
+    const rowsEl = document.getElementById('rows');
+    BUILDS.forEach(function(b,i){
+      const r = document.createElement('button'); r.className='brow';
+      r.innerHTML =
+        '<span class="flap">'+b.code+'</span>'+
+        '<span class="mid"><span class="nm">'+b.name+'<span class="ag">&#8984; agentic</span></span>'+
+          '<span class="ds">'+b.desc+'</span></span>'+
+        '<span class="stat">'+b.status+'<span class="arr">&#8599;</span></span>';
+      r.addEventListener('click', function(){ openDetail(i); });
+      rowsEl.appendChild(r);
+    });
+
+    // ---- detail panel ----
+    const scrim=document.getElementById('scrim'), panel=document.getElementById('panel');
+    let openIdx=-1;
+    function fill(i){
+      const b=BUILDS[i];
+      document.getElementById('p-idx').textContent=String(i+1).padStart(2,'0')+' / '+String(BUILDS.length).padStart(2,'0');
+      document.getElementById('p-era').innerHTML=b.era.replace('·','&middot;');
+      document.getElementById('p-title').textContent=b.name;
+      document.getElementById('p-tagline').textContent=b.tagline;
+      document.getElementById('p-body').textContent=b.problem;
+      document.getElementById('p-list').innerHTML=(b.points||[]).map(function(p){
+        return '<div class="pli"><span class="b">&rsaquo;</span><span>'+p+'</span></div>'; }).join('');
+      document.getElementById('p-stack').innerHTML=(b.stack||[]).map(function(t){
+        return '<span class="tag">'+t+'</span>'; }).join('');
+      document.getElementById('p-ag').innerHTML=b.ag;
+      document.getElementById('p-repos').innerHTML=(b.repos||[]).map(function(rp){
+        return '<a class="repo" href="'+rp.u+'" target="_blank" rel="noopener"><span>'+rp.l+'</span>'+
+               '<span class="gh">github &#8599;</span></a>'; }).join('');
+      document.getElementById('p-prev').disabled=i<=0;
+      document.getElementById('p-next').disabled=i>=BUILDS.length-1;
+    }
+    function openDetail(i){ openIdx=i; fill(i); scrim.classList.add('on'); panel.classList.add('on'); panel.setAttribute('aria-hidden','false'); }
+    function closeDetail(){ openIdx=-1; scrim.classList.remove('on'); panel.classList.remove('on'); panel.setAttribute('aria-hidden','true'); }
+    scrim.addEventListener('click', closeDetail);
+    document.getElementById('p-close').addEventListener('click', closeDetail);
+    document.getElementById('p-prev').addEventListener('click', function(){ if(openIdx>0) openDetail(openIdx-1); });
+    document.getElementById('p-next').addEventListener('click', function(){ if(openIdx<BUILDS.length-1) openDetail(openIdx+1); });
+    addEventListener('keydown', function(e){
+      if(openIdx<0) return;
+      if(e.key==='Escape') closeDetail();
+      if(e.key==='ArrowLeft'&&openIdx>0) openDetail(openIdx-1);
+      if(e.key==='ArrowRight'&&openIdx<BUILDS.length-1) openDetail(openIdx+1);
+    });
+
+    // ---- the yard: a static night depot throat (fan of stabling sidings) ----
+    (function(){
+      const cv=document.getElementById('bg'), ctx=cv.getContext('2d');
+      const dpr=Math.min(window.devicePixelRatio||1,2);
+      const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+      let W=0,H=0,hy=0,cx=0, stars=[], motes=[], sidings=[], t0=performance.now();
+      function build(){
+        stars=[]; for(let i=0;i<160;i++) stars.push({x:Math.random(),y:Math.pow(Math.random(),1.4)*0.5,r:0.4+Math.random()*1.5,b:0.2+Math.random()*0.8,tw:0.4+Math.random()*2,ph:Math.random()*6.28});
+        motes=[]; for(let i=0;i<20;i++) motes.push({x:Math.random(),ph:Math.random(),sp:0.04+Math.random()*0.1,r:0.5+Math.random()*1.6});
+        // a fan of stabling sidings spreading from the throat toward the bottom edge
+        sidings=[]; const n=9;
+        for(let k=0;k<n;k++){ const f=(k/(n-1))-0.5; sidings.push({bx:0.5+f*1.35, lit: k===3||k===6 }); }
+      }
+      function resize(){ W=innerWidth; H=innerHeight; cv.width=W*dpr; cv.height=H*dpr; cv.style.width=W+'px'; cv.style.height=H+'px'; ctx.setTransform(dpr,0,0,dpr,0,0); hy=0.46*H; cx=0.5*W; }
+      function draw(){
+        const time=(performance.now()-t0)/1000;
+        const g=ctx.createLinearGradient(0,0,0,H);
+        g.addColorStop(0,'#120e22'); g.addColorStop(0.5,'#0d0a1a'); g.addColorStop(1,'#080610');
+        ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+        // focal glow at the throat
+        const cg=ctx.createRadialGradient(cx,hy,0,cx,hy,Math.max(W,H)*0.6);
+        cg.addColorStop(0,'rgba(185,140,255,0.10)'); cg.addColorStop(0.5,'rgba(185,140,255,0.03)'); cg.addColorStop(1,'rgba(185,140,255,0)');
+        ctx.fillStyle=cg; ctx.fillRect(0,0,W,H);
+        // stars
+        for(const s of stars){ const y=s.y*hy; if(y>hy) continue; const tw=0.5+0.5*Math.sin(time*s.tw+s.ph);
+          const a=s.b*tw*Math.max(0,(hy-y)/hy);
+          ctx.fillStyle='rgba(226,220,246,'+a.toFixed(3)+')'; ctx.beginPath(); ctx.arc(s.x*W,y,s.r,0,6.28); ctx.fill(); }
+        // the fan of sidings (two rails each, converging at the throat)
+        for(const sd of sidings){
+          const bxL=(sd.bx*W)-16, bxR=(sd.bx*W)+16;
+          const a=sd.lit?0.5:0.2;
+          ctx.lineCap='round';
+          ctx.strokeStyle='rgba(206,198,232,'+(a*0.8).toFixed(3)+')'; ctx.lineWidth=2;
+          ctx.beginPath(); ctx.moveTo(cx,hy); ctx.lineTo(bxL,H+10); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(cx,hy); ctx.lineTo(bxR,H+10); ctx.stroke();
+          // a few sleepers
+          ctx.strokeStyle='rgba(140,128,170,'+(a*0.5).toFixed(3)+')'; ctx.lineWidth=1.4;
+          for(let j=1;j<=5;j++){ const f=j/6; const x=cx+( ( (bxL+bxR)/2 )-cx)*f, y=hy+(H+10-hy)*f;
+            const hw=4+f*14; ctx.beginPath(); ctx.moveTo(x-hw,y); ctx.lineTo(x+hw,y); ctx.stroke(); }
+          // signal light near the throat for lit sidings
+          if(sd.lit){ const pulse=0.6+0.4*Math.sin(time*1.4+sd.bx*9);
+            const lx=cx+((sd.bx*W)-cx)*0.16, ly=hy+(H-hy)*0.16;
+            const rg=ctx.createRadialGradient(lx,ly,0,lx,ly,16);
+            rg.addColorStop(0,'rgba(185,140,255,'+(0.8*pulse).toFixed(3)+')'); rg.addColorStop(1,'rgba(185,140,255,0)');
+            ctx.fillStyle=rg; ctx.beginPath(); ctx.arc(lx,ly,16,0,6.28); ctx.fill();
+            ctx.fillStyle='rgba(210,180,255,'+pulse.toFixed(3)+')'; ctx.beginPath(); ctx.arc(lx,ly,2.4,0,6.28); ctx.fill(); }
+        }
+        // drifting violet dust
+        ctx.save(); ctx.globalCompositeOperation='lighter';
+        for(const m of motes){ const f=((time*m.sp+m.ph)%1+1)%1, y=H-f*H*0.85, x=m.x*W+Math.sin(time*0.5+m.ph*6.28)*14, a=(1-f)*0.32;
+          ctx.fillStyle='rgba(190,160,255,'+a.toFixed(3)+')'; ctx.beginPath(); ctx.arc(x,y,m.r,0,6.28); ctx.fill(); }
+        ctx.restore();
+        // bottom shade
+        const vg=ctx.createLinearGradient(0,H*0.55,0,H);
+        vg.addColorStop(0,'rgba(8,6,16,0)'); vg.addColorStop(1,'rgba(8,6,16,0.6)');
+        ctx.fillStyle=vg; ctx.fillRect(0,0,W,H);
+        if(!reduce) requestAnimationFrame(draw);
+      }
+      build(); resize(); draw();
+      addEventListener('resize', function(){ resize(); if(reduce) draw(); });
+    })();
+
+    setTimeout(function(){ document.getElementById('enterVeil').classList.add('off'); }, 90);
+    // hard fallback: ensure the veil never stays up even if its transition is interrupted
+    setTimeout(function(){ var v=document.getElementById('enterVeil'); if(v) v.style.display='none'; }, 1300);
+  </script>
+
+  <script src="rail/network.js"></script>
+</body>
+</html>

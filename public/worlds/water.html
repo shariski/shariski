@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>shariski.com — water</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300..800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  /* same engine + design system as the main line; only the world differs */
+  :root{
+    --ink:#e9edf8; --dim:#7c86a6; --accent:#5fcfd6; --aqua:#54d3e0;
+    --display:'Bricolage Grotesque',system-ui,sans-serif;
+    --mono:'IBM Plex Mono',ui-monospace,monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%}
+  body{background:#06121d;color:var(--ink);font-family:var(--display);
+    -webkit-font-smoothing:antialiased;overflow-x:hidden}
+
+  .mark{position:fixed;top:18px;left:20px;z-index:120;font-family:var(--mono);font-size:11px;
+    letter-spacing:.18em;text-transform:uppercase;color:var(--dim)}
+  .mark b{color:var(--ink);font-weight:500}
+  .corner{position:fixed;top:18px;right:20px;font-family:var(--mono);font-size:11px;letter-spacing:.04em;
+    color:var(--dim);z-index:120;text-align:right;line-height:1.6}
+  .corner b{color:var(--accent);font-weight:500}
+  .backline{position:fixed;top:42px;left:20px;z-index:120;font-family:var(--mono);font-size:11px;
+    letter-spacing:.1em;color:var(--dim);text-decoration:none}
+  .backline:hover{color:var(--accent)}
+  .backline b{color:var(--ink);font-weight:500}
+
+  .wrap{position:relative;height:560vh}
+  .cab{position:sticky;top:0;height:100vh;overflow:hidden;background:#06121d}
+  canvas{position:absolute;inset:0;z-index:2}
+  .vig{position:absolute;inset:0;z-index:3;pointer-events:none;
+    background:radial-gradient(circle at 50% 44%,transparent 46%,rgba(2,8,14,.6) 100%)}
+
+  /* the swimmer — continuous-line style, prone & elongated (rides the same rail) */
+  .swim{position:absolute;left:50%;top:66%;transform:translate(-50%,-50%);z-index:4;
+    width:min(60vw,470px);height:auto;filter:drop-shadow(0 10px 34px rgba(0,0,0,.45))}
+  .swim path{fill:none;stroke:var(--ink);stroke-width:4.5;stroke-linecap:round;stroke-linejoin:round}
+  .swim .body{stroke-width:5}
+  .swim .head{fill:none;stroke:var(--ink);stroke-width:4.5}
+  .swim .cap{fill:var(--ink);opacity:.9;stroke:none}
+  .swim .curl{fill:none;stroke:var(--ink);stroke-width:4;stroke-linecap:round}
+  .swim .curl.sm{stroke-width:3;opacity:.7}
+  .swim .arm,.swim .leg,.swim .head-g{transform-box:view-box}
+  .swim .arm{transform-origin:120px 92px}
+  .swim .leg{transform-origin:196px 102px}
+  .swim .head-g{transform-origin:120px 92px}
+  .swim .far{opacity:.38}
+  .swim .ripple{fill:none;stroke:var(--aqua);stroke-width:2;opacity:0;
+    transform-box:view-box;transform-origin:95px 86px}
+
+  .stations{position:absolute;inset:0;z-index:5}
+  .st{position:absolute;left:0;top:0;width:min(86vw,900px);text-align:center;
+    transform-origin:50% 50%;will-change:transform,opacity,filter}
+  .st .idx{font-family:var(--mono);font-size:11px;letter-spacing:.34em;color:var(--dim);margin-bottom:12px;opacity:0;transition:opacity .35s ease}
+  .st .era{font-family:var(--mono);font-size:14px;letter-spacing:.2em;text-transform:uppercase;color:var(--accent);margin-bottom:16px}
+  .st .ln{font-size:clamp(26px,4.4vw,54px);line-height:1.05;letter-spacing:-.03em;
+    font-variation-settings:'opsz' 96,'wght' 720;text-shadow:0 2px 30px rgba(2,8,14,.85);text-wrap:balance}
+  .st .enter{margin-top:18px;font-family:var(--mono);font-size:12px;letter-spacing:.22em;text-transform:uppercase;
+    color:var(--dim);opacity:0;transition:opacity .4s ease}
+  .st.is-focus .idx{opacity:.85}
+  .st.is-focus .enter{opacity:1}
+
+  .cue{position:absolute;left:50%;bottom:26px;transform:translateX(-50%);z-index:6;
+    font-family:var(--mono);font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--dim);
+    display:flex;flex-direction:column;align-items:center;gap:8px}
+  .cue .bar{width:1px;height:30px;background:linear-gradient(var(--accent),transparent)}
+  .hud{position:absolute;left:22px;bottom:20px;z-index:30;font-family:var(--mono);font-size:12px;letter-spacing:.08em;color:var(--dim)}
+  .hud .v{color:var(--ink)}
+  .meter{position:absolute;right:22px;bottom:20px;z-index:30;display:flex;gap:5px;align-items:center}
+  .meter .seg{width:14px;height:3px;border-radius:2px;background:rgba(233,237,248,.18)}
+  .meter .seg.on{background:var(--accent)}
+
+  .fallback{display:none;padding:96px clamp(28px,7vw,64px);max-width:860px}
+  .fallback .row{padding:24px 0;border-top:1px solid rgba(233,237,248,.12)}
+  .fallback .era{font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);margin-bottom:8px}
+  .fallback .ln{font-size:clamp(22px,3vw,32px);font-variation-settings:'opsz' 70,'wght' 640}
+  body.reduced .wrap{height:auto}
+  body.reduced .cab{position:relative;height:100vh}
+  body.reduced .stations,body.reduced .cue,body.reduced .hud,body.reduced .meter{display:none}
+  body.reduced .fallback{display:block}
+
+  @media (prefers-reduced-motion: no-preference){
+    .cue .bar{animation:drop 1.8s ease-in-out infinite}
+    @keyframes drop{0%{transform:scaleY(0);transform-origin:top}45%{transform:scaleY(1);transform-origin:top}55%{transform:scaleY(1);transform-origin:bottom}100%{transform:scaleY(0);transform-origin:bottom}}
+
+    .swim{animation:floaty 6s ease-in-out infinite}
+    @keyframes floaty{0%,100%{transform:translate(-50%,-50%) rotate(-1.5deg)}50%{transform:translate(-50%,-52%) rotate(1.5deg)}}
+    .stage-breath .head-g{animation:breathe 3.4s ease-in-out infinite}
+    .stage-breath .ripple{opacity:.5;animation:rippleA 3.4s ease-out infinite}
+    .stage-breath .ripple.r2{animation-delay:1.7s}
+    .stage-breath .arm.near{animation:tread 3.4s ease-in-out infinite}
+    .stage-breath .arm.far{animation:tread 3.4s ease-in-out infinite;animation-delay:-1.7s}
+    .stage-breath .leg.near{animation:flutter 1.5s ease-in-out infinite}
+    .stage-breath .leg.far{animation:flutter 1.5s ease-in-out infinite;animation-delay:-.75s}
+    @keyframes breathe{0%,100%{transform:rotate(0) translateY(0)}50%{transform:rotate(-15deg) translateY(-3px)}}
+    @keyframes rippleA{0%{transform:scale(.5);opacity:.5}100%{transform:scale(2.6);opacity:0}}
+    @keyframes tread{0%,100%{transform:rotate(-8deg)}50%{transform:rotate(10deg)}}
+    @keyframes flutter{0%,100%{transform:rotate(-10deg)}50%{transform:rotate(10deg)}}
+    .stage-arms .arm.near{animation:pull 2s ease-in-out infinite}
+    .stage-arms .arm.far{transform:rotate(4deg)}
+    .stage-arms .leg.near,.stage-arms .leg.far{transform:rotate(3deg)}
+    /* arms-only pull: catch at the front, sweep down & back under the body (counter-clockwise) */
+    @keyframes pull{0%{transform:rotate(30deg)}50%{transform:rotate(-150deg)}100%{transform:rotate(30deg)}}
+    .stage-kick .arm.near,.stage-kick .arm.far{transform:rotate(-6deg)}
+    .stage-kick .leg.near{animation:kickA .5s ease-in-out infinite}
+    .stage-kick .leg.far{animation:kickA .5s ease-in-out infinite;animation-delay:-.25s}
+    @keyframes kickA{0%,100%{transform:rotate(-20deg)}50%{transform:rotate(20deg)}}
+    .stage-free .arm.near{animation:windmill 1.2s linear infinite}
+    .stage-free .arm.far{animation:windmill 1.2s linear infinite;animation-delay:-.6s}
+    .stage-free .leg.near{animation:kickA .34s ease-in-out infinite}
+    .stage-free .leg.far{animation:kickA .34s ease-in-out infinite;animation-delay:-.17s}
+    .stage-free{animation:roll 1.2s ease-in-out infinite}
+    /* freestyle for a swimmer facing left: hand catches at the front, pulls DOWN and
+       back beneath the body, then recovers up & over — i.e. counter-clockwise on screen */
+    @keyframes windmill{to{transform:rotate(-360deg)}}
+    @keyframes roll{0%,100%{transform:translate(-50%,-50%) rotate(-4deg)}50%{transform:translate(-50%,-50%) rotate(4deg)}}
+    .stage-breast .arm.near{animation:sweep 3s ease-in-out infinite}
+    .stage-breast .arm.far{animation:sweep 3s ease-in-out infinite}
+    .stage-breast .leg.near{animation:whip 3s ease-in-out infinite}
+    .stage-breast .leg.far{animation:whip 3s ease-in-out infinite}
+    @keyframes sweep{0%{transform:rotate(20deg)}40%{transform:rotate(148deg)}60%{transform:rotate(148deg)}100%{transform:rotate(20deg)}}
+    @keyframes whip{0%,100%{transform:rotate(0)}55%{transform:rotate(26deg)}}
+  }
+
+  /* arrival / departure transitions */
+  .enter-veil{position:fixed;inset:0;z-index:200;background:#0a2536;opacity:1;pointer-events:none;transition:opacity 1.2s ease}
+  .enter-veil.off{opacity:0}
+  .exit-veil{position:fixed;inset:0;z-index:200;background:#04050e;opacity:0;pointer-events:none;transition:opacity 1s ease}
+  .exit-veil.on{opacity:1;pointer-events:auto}
+  .exitnote{position:fixed;left:50%;bottom:30px;transform:translateX(-50%);z-index:210;text-align:center;
+    font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim);
+    opacity:0;transition:opacity .5s}
+  .exitnote.on{opacity:1}
+
+  /* manual return — appears at the final stop; no auto-merge */
+  .mergeback{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(10px);z-index:40;
+    opacity:0;pointer-events:none;cursor:pointer;font-family:var(--mono);font-size:11px;letter-spacing:.18em;
+    text-transform:uppercase;color:var(--dim);background:rgba(233,237,248,.05);
+    border:1px solid rgba(233,237,248,.2);border-radius:999px;padding:11px 20px;
+    transition:opacity .5s ease,transform .5s ease,color .25s,border-color .25s,box-shadow .25s}
+  .mergeback.show{opacity:1;pointer-events:auto;transform:translateX(-50%)}
+  .mergeback:hover{color:var(--accent);border-color:var(--accent);box-shadow:0 0 18px rgba(95,207,214,.25)}
+  .mergeback b{color:var(--accent);font-weight:500}
+</style>
+</head>
+<body>
+  <div class="enter-veil" id="enterVeil"></div>
+  <div class="exit-veil" id="exitVeil"></div>
+  <div class="exitnote" id="exitNote">merging back to the main line &rarr;</div>
+
+  <div class="mark"><b>shariski</b>.com</div>
+  <a class="backline" href="../shariski-rail-journey.html?stop=1">&larr; <b>main line</b></a>
+  <div class="corner"><b>stop 01 · water</b><br/>a side world · scroll to descend</div>
+
+  <div class="wrap" id="wrap">
+    <div class="cab" id="cab">
+      <canvas id="cv"></canvas>
+      <div class="vig"></div>
+
+      <svg class="swim stage-breath" id="swim" viewBox="0 0 300 200">
+        <!-- breathing ripples around the head -->
+        <circle class="ripple" cx="93" cy="85" r="13"/>
+        <circle class="ripple r2" cx="93" cy="85" r="13"/>
+
+        <!-- FAR arm = the lead arm, extended forward in the water (drawn behind) -->
+        <g class="arm far">
+          <path d="M120,92 C104,94 90,96 78,98"/>
+          <path class="curl sm" d="M78,98 c-6,0 -8,5 0,6"/>
+        </g>
+        <!-- FAR leg (behind) -->
+        <g class="leg far">
+          <path d="M196,102 C214,107 230,111 244,114"/>
+          <path class="curl sm" d="M244,114 c6,-1 8,4 1,6"/>
+        </g>
+
+        <!-- BODY: one flowing line — neck → back → hip → trailing tail -->
+        <path class="body" d="M107,90 C140,85 172,89 196,99 C212,104 225,108 236,112"/>
+
+        <!-- HEAD with swim cap; the group turns up to breathe -->
+        <g class="head-g">
+          <path d="M120,92 C114,91 108,90 103,89"/>
+          <ellipse class="cap" cx="92" cy="85" rx="12" ry="10"/>
+          <path class="head" d="M82,81 C86,77 96,76 102,79"/>
+        </g>
+
+        <!-- NEAR arm = the recovery arm, bent and lifted over the head (the animated one) -->
+        <g class="arm near">
+          <path d="M120,92 C113,83 105,78 98,79"/>
+          <path d="M98,79 C91,80 86,84 83,89"/>
+          <circle class="curl sm" cx="98" cy="79" r="2.2"/>
+          <path class="curl" d="M83,89 c-5,1 -6,6 1,6"/>
+        </g>
+        <!-- NEAR leg: trailing flutter with a pointed foot -->
+        <g class="leg near">
+          <path d="M196,102 C214,104 230,108 242,111"/>
+          <path d="M242,111 C249,113 254,115 259,118"/>
+          <circle class="curl sm" cx="242" cy="111" r="2.2"/>
+          <path class="curl" d="M259,118 c6,-1 8,4 1,6"/>
+        </g>
+      </svg>
+
+      <div class="stations" id="stations"></div>
+      <div class="hud"><span class="v" id="hud">breath</span> · depth <span class="v" id="depth">0 m</span></div>
+      <div class="meter" id="meter"></div>
+      <div class="cue" id="cue"><span class="bar"></span><span>descend</span></div>
+    </div>
+    <div class="fallback" id="fallback"></div>
+  </div>
+
+  <button class="mergeback" id="mergeback">surface &amp; <b>merge back to the main line</b> &rarr;</button>
+
+  <script src="../rail/engine.js"></script>
+  <script>
+    // each step is a sub-stop of water, riding the same rail as the main line
+    const STATIONS = [
+      { era:'water · 01', ln:'First, just breathing.',      key:'breath', cue:'depth 0 m'  },
+      { era:'water · 02', ln:'Then the pull — arms only.',   key:'arms',   cue:'depth 2 m'  },
+      { era:'water · 03', ln:'Then the kick, from the hip.', key:'kick',   cue:'depth 5 m'  },
+      { era:'water · 04', ln:'Freestyle — finally gliding.', key:'free',   cue:'depth 8 m'  },
+      { era:'water · 05', ln:'Breaststroke, from zero again.', key:'breast', cue:'depth 12 m' }
+    ];
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const swim = document.getElementById('swim');
+    const hud = document.getElementById('hud'), depthEl = document.getElementById('depth');
+    const meter = document.getElementById('meter');
+    STATIONS.forEach(()=>{ const s=document.createElement('span'); s.className='seg'; meter.appendChild(s); });
+    const segs=[...meter.children];
+    const depths=[0,2,5,8,12];
+
+    // fade in from the dive transition
+    setTimeout(()=>{ document.getElementById('enterVeil').classList.add('off'); }, 80);
+
+    // ---- underwater environment (the part that differs) drawn into the engine canvas ----
+    function makeUnderwater(){
+      const motes=[], bubbles=[];
+      for(let i=0;i<26;i++) motes.push({nx:Math.random(),ny:Math.random(),r:0.5+Math.random()*1.6,sp:0.3+Math.random()*0.7,ph:Math.random()*6.28});
+      for(let i=0;i<18;i++) bubbles.push({nx:Math.random(),r:2+Math.random()*7,sp:0.05+Math.random()*0.08,ph:Math.random()});
+      const lp=(a,b,t)=>a+(b-a)*t, rgb=c=>'rgb('+(c[0]|0)+','+(c[1]|0)+','+(c[2]|0)+')';
+      return function(env){
+        const {ctx,W,H,time,cur,N}=env;
+        const depthT=Math.min(1, N>1?cur/(N-1):0);
+        const top=[lp(16,5,depthT),lp(60,16,depthT),lp(74,26,depthT)];
+        const mid=[lp(10,3,depthT),lp(37,12,depthT),lp(54,20,depthT)];
+        const g=ctx.createLinearGradient(0,0,0,H);
+        g.addColorStop(0,rgb(top));g.addColorStop(0.5,rgb(mid));g.addColorStop(1,'rgb(2,8,14)');
+        ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+        const lit=(1-depthT*0.72);
+        ctx.save();ctx.globalCompositeOperation='lighter';
+        for(let k=0;k<4;k++){
+          const rx=(0.12+k*0.26)*W+Math.sin(time*0.18+k)*0.04*W;
+          ctx.save();ctx.translate(rx,0);ctx.transform(1,0,-0.26,1,0,0);
+          const rg=ctx.createLinearGradient(0,0,0,H);
+          rg.addColorStop(0,'rgba(150,235,245,'+(0.11*lit).toFixed(3)+')');
+          rg.addColorStop(0.62,'rgba(120,220,235,0)');
+          ctx.fillStyle=rg;ctx.fillRect(0,0,0.06*W,H);ctx.restore();
+        }
+        for(let k=0;k<3;k++){
+          const cxp=(0.3+k*0.22)*W+Math.sin(time*0.25+k*2)*0.06*W, cyp=(0.08+0.05*Math.sin(time*0.3+k))*H, rad=0.22*W;
+          const cg=ctx.createRadialGradient(cxp,cyp,0,cxp,cyp,rad);
+          cg.addColorStop(0,'rgba(140,230,242,'+(0.10*lit).toFixed(3)+')');cg.addColorStop(1,'rgba(140,230,242,0)');
+          ctx.fillStyle=cg;ctx.fillRect(cxp-rad,cyp-rad,rad*2,rad*2);
+        }
+        ctx.restore();
+        ctx.fillStyle='rgba(200,235,242,0.35)';
+        for(const m of motes){
+          let y=(((m.ny - time*m.sp*0.02)%1)+1)%1*H; const x=m.nx*W+Math.sin(time*0.3+m.ph)*6;
+          ctx.beginPath();ctx.arc(x,y,m.r,0,6.28);ctx.fill();
+        }
+        for(const b of bubbles){
+          const f=((time*b.sp+b.ph)%1+1)%1, y=H-f*H*1.12, x=b.nx*W+Math.sin(time*1.4+b.ph*6.28)*8, a=Math.min(1,f*4)*(1-f)*1.3;
+          ctx.strokeStyle='rgba(200,240,250,'+(0.5*a).toFixed(3)+')';ctx.lineWidth=1;
+          ctx.beginPath();ctx.arc(x,y,b.r,0,6.28);ctx.stroke();
+          ctx.fillStyle='rgba(255,255,255,'+(0.25*a).toFixed(3)+')';
+          ctx.beginPath();ctx.arc(x-b.r*0.3,y-b.r*0.3,b.r*0.32,0,6.28);ctx.fill();
+        }
+        const vg=ctx.createRadialGradient(W/2,H*0.42,H*0.2,W/2,H*0.5,H*0.92);
+        vg.addColorStop(0,'rgba(2,8,14,0)');vg.addColorStop(1,'rgba(2,8,14,'+(0.45+0.3*depthT).toFixed(2)+')');
+        ctx.fillStyle=vg;ctx.fillRect(0,0,W,H);
+      };
+    }
+
+    // swimmer stage follows the sub-stop you've settled on
+    function onStop(info){
+      if(!info) return;
+      const s = STATIONS[info.index]; if(!s) return;
+      swim.setAttribute('class', 'swim stage-' + s.key);
+      hud.textContent = s.key; depthEl.textContent = (depths[info.index]||0) + ' m';
+      segs.forEach((seg,j)=>seg.classList.toggle('on', j<=info.index));
+      // final stop: offer a manual way back (no auto-merge)
+      const last = info.index >= STATIONS.length-1;
+      document.getElementById('mergeback').classList.toggle('show', last);
+      const cue=document.getElementById('cue'); if(cue) cue.style.opacity = last ? 0 : '';
+    }
+
+    if (reduce) swim.setAttribute('class', 'swim stage-free');
+
+    RAIL.applyConfig({ world:'water' });
+    RAIL.init({ stations: STATIONS, branches:false, drawEnv: makeUnderwater(), onStop: onStop });
+
+    // ---- return to the main line: only when the user chooses (no auto-merge) ----
+    // The final stop simply rests in focus. Merge happens when the user keeps
+    // scrolling PAST it (overscroll), or taps the explicit control.
+    let exiting=false, over=0;
+    function leaveToMainLine(){
+      if(exiting) return; exiting=true;
+      document.getElementById('exitNote').classList.add('on');
+      document.getElementById('exitVeil').classList.add('on');
+      setTimeout(()=>{ location.href='../shariski-rail-journey.html?stop=2'; }, 1100);
+    }
+    document.getElementById('mergeback').addEventListener('click', leaveToMainLine);
+    function atEnd(){ return (innerHeight + window.scrollY) >= (document.body.scrollHeight - 4); }
+    addEventListener('wheel', (e)=>{
+      if(exiting) return;
+      if(atEnd() && e.deltaY>0){ over+=e.deltaY; document.getElementById('exitNote').classList.add('on');
+        if(over>240) leaveToMainLine(); }
+      else { over=0; if(!atEnd()) document.getElementById('exitNote').classList.remove('on'); }
+    }, {passive:true});
+    let touchY=null;
+    addEventListener('touchstart', (e)=>{ touchY=e.touches[0].clientY; }, {passive:true});
+    addEventListener('touchmove', (e)=>{
+      if(exiting||touchY==null) return;
+      const dy=touchY-e.touches[0].clientY; touchY=e.touches[0].clientY;
+      if(atEnd() && dy>0){ over+=dy*1.4; document.getElementById('exitNote').classList.add('on');
+        if(over>180) leaveToMainLine(); }
+    }, {passive:true});
+  </script>
+</body>
+</html>

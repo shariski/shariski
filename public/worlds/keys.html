@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>shariski.com — keys</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300..800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  /* same engine + design system as the main line; only the world differs */
+  :root{
+    --ink:#f0e9dc; --dim:#9b8f7b; --accent:#e6a14d;
+    --display:'Bricolage Grotesque',system-ui,sans-serif;
+    --mono:'IBM Plex Mono',ui-monospace,monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%}
+  body{background:#140d06;color:var(--ink);font-family:var(--display);
+    -webkit-font-smoothing:antialiased;overflow-x:hidden}
+
+  .mark{position:fixed;top:18px;left:20px;z-index:120;font-family:var(--mono);font-size:11px;
+    letter-spacing:.18em;text-transform:uppercase;color:var(--dim)}
+  .mark b{color:var(--ink);font-weight:500}
+  .corner{position:fixed;top:18px;right:20px;font-family:var(--mono);font-size:11px;letter-spacing:.04em;
+    color:var(--dim);z-index:120;text-align:right;line-height:1.6}
+  .corner b{color:var(--accent);font-weight:500}
+  .backline{position:fixed;top:42px;left:20px;z-index:120;font-family:var(--mono);font-size:11px;
+    letter-spacing:.1em;color:var(--dim);text-decoration:none}
+  .backline:hover{color:var(--accent)}
+  .backline b{color:var(--ink);font-weight:500}
+
+  .wrap{position:relative;height:560vh}
+  .cab{position:sticky;top:0;height:100vh;overflow:hidden;background:#140d06}
+  canvas{position:absolute;inset:0;z-index:2}
+  .vig{position:absolute;inset:0;z-index:3;pointer-events:none;
+    background:radial-gradient(circle at 50% 42%,transparent 46%,rgba(8,5,2,.62) 100%)}
+  /* a stage for the typing UI so it reads clear of the narrative riding the rail */
+  .uiscrim{position:absolute;left:0;right:0;bottom:0;height:46%;z-index:7;pointer-events:none;
+    background:linear-gradient(transparent,rgba(8,5,2,.72))}
+
+  .stations{position:absolute;inset:0;z-index:5}
+  .st{position:absolute;left:0;top:0;width:min(86vw,900px);text-align:center;
+    transform-origin:50% 50%;will-change:transform,opacity,filter}
+  .st .idx{font-family:var(--mono);font-size:11px;letter-spacing:.34em;color:var(--dim);margin-bottom:12px;opacity:0;transition:opacity .35s ease}
+  .st .era{font-family:var(--mono);font-size:14px;letter-spacing:.2em;text-transform:uppercase;color:var(--accent);margin-bottom:16px}
+  .st .ln{font-size:clamp(24px,3.8vw,46px);line-height:1.05;letter-spacing:-.03em;
+    font-variation-settings:'opsz' 96,'wght' 720;text-shadow:0 2px 30px rgba(8,5,2,.9);text-wrap:balance}
+  .st .enter{margin-top:16px;font-family:var(--mono);font-size:12px;letter-spacing:.22em;text-transform:uppercase;
+    color:var(--dim);opacity:0;transition:opacity .4s ease}
+  .st.is-focus .idx{opacity:.85}
+  .st.is-focus .enter{opacity:1}
+
+  /* ---- interactive keyboard (the world's actor) ---- */
+  /* interactive typing cluster, anchored to the bottom (prompt always above keys) */
+  .typeui{position:absolute;left:50%;bottom:56px;transform:translateX(-50%);z-index:9;
+    display:flex;flex-direction:column;align-items:center;gap:18px;width:min(94vw,520px)}
+  .prompt{text-align:center;width:100%}
+  .prompt .goal{font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--dim);margin-bottom:12px}
+  .prompt .text{font-family:var(--mono);font-size:clamp(19px,2.6vw,27px);letter-spacing:.06em;color:var(--dim);white-space:pre-wrap}
+  .prompt .text .done{color:var(--accent)}
+  .prompt .text .caret{color:var(--ink);animation:blink 1s steps(1) infinite}
+  .prompt.shake{animation:keyshake .26s}
+  .prompt.cleared .text{color:var(--accent)}
+  @keyframes blink{50%{opacity:0}}
+
+  .kbwrap{display:flex;flex-direction:column;gap:6px;align-items:center;transition:opacity .5s ease}
+  .kbrow{display:flex;gap:6px;justify-content:center}
+  .key{width:clamp(20px,3.6vw,34px);height:clamp(20px,3.6vw,34px);border-radius:6px;
+    border:1px solid rgba(240,233,220,.18);background:rgba(240,233,220,.05);
+    display:grid;place-items:center;font-family:var(--mono);font-size:clamp(8px,1.1vw,12px);color:var(--dim);
+    position:relative;transition:transform .08s,background .15s,color .15s,box-shadow .15s,border-color .15s}
+  .key.bump::after{content:'';position:absolute;bottom:5px;left:50%;transform:translateX(-50%);
+    width:9px;height:2px;border-radius:2px;background:var(--dim)}
+  .key.next{border-color:var(--accent);color:var(--accent);box-shadow:0 0 14px rgba(230,161,77,.5)}
+  .key.hit{background:var(--accent);color:#1a1208;transform:translateY(2px);box-shadow:0 0 20px var(--accent)}
+  .key.wrong{border-color:#e0563a;color:#e0563a;animation:keyshake .25s}
+  .key.space{width:clamp(130px,32vw,240px)}
+  @keyframes keyshake{0%,100%{transform:translateX(0)}33%{transform:translateX(-3px)}66%{transform:translateX(3px)}}
+
+  .cue{position:absolute;left:50%;bottom:28px;transform:translateX(-50%);z-index:6;
+    font-family:var(--mono);font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--dim);
+    display:flex;align-items:center;gap:8px}
+  .hud{position:absolute;left:22px;bottom:20px;z-index:30;font-family:var(--mono);font-size:12px;letter-spacing:.08em;color:var(--dim)}
+  .hud .v{color:var(--ink)}
+  .meter{position:absolute;right:22px;bottom:20px;z-index:30;display:flex;gap:5px;align-items:center}
+  .meter .seg{width:14px;height:3px;border-radius:2px;background:rgba(240,233,220,.18)}
+  .meter .seg.on{background:var(--accent)}
+
+  .fallback{display:none;padding:96px clamp(28px,7vw,64px);max-width:860px}
+  .fallback .row{padding:24px 0;border-top:1px solid rgba(240,233,220,.12)}
+  .fallback .era{font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);margin-bottom:8px}
+  .fallback .ln{font-size:clamp(22px,3vw,32px);font-variation-settings:'opsz' 70,'wght' 640}
+  body.reduced .wrap{height:auto}
+  body.reduced .cab{position:relative;height:100vh}
+  body.reduced .stations,body.reduced .cue,body.reduced .hud,body.reduced .meter,
+  body.reduced .typeui{display:none}
+  body.reduced .fallback{display:block}
+
+  @media (prefers-reduced-motion: no-preference){
+    .cue .bar{width:1px;height:22px;background:linear-gradient(var(--accent),transparent)}
+  }
+
+  .enter-veil{position:fixed;inset:0;z-index:200;background:#1a1208;opacity:1;pointer-events:none;transition:opacity 1.2s ease}
+  .enter-veil.off{opacity:0}
+  .exit-veil{position:fixed;inset:0;z-index:200;background:#04050e;opacity:0;pointer-events:none;transition:opacity 1s ease}
+  .exit-veil.on{opacity:1;pointer-events:auto}
+  .exitnote{position:fixed;left:50%;bottom:30px;transform:translateX(-50%);z-index:210;text-align:center;
+    font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim);
+    opacity:0;transition:opacity .5s}
+  .exitnote.on{opacity:1}
+
+  /* manual return — appears at the final stop; placed top-centre so it never covers the keyboard */
+  .mergeback{position:fixed;left:50%;top:74px;transform:translateX(-50%) translateY(-8px);z-index:210;
+    opacity:0;pointer-events:none;cursor:pointer;font-family:var(--mono);font-size:11px;letter-spacing:.18em;
+    text-transform:uppercase;color:var(--dim);background:rgba(240,233,220,.05);
+    border:1px solid rgba(240,233,220,.2);border-radius:999px;padding:11px 20px;
+    transition:opacity .5s ease,transform .5s ease,color .25s,border-color .25s,box-shadow .25s}
+  .mergeback.show{opacity:1;pointer-events:auto;transform:translateX(-50%)}
+  .mergeback:hover{color:var(--accent);border-color:var(--accent);box-shadow:0 0 18px rgba(230,161,77,.25)}
+  .mergeback b{color:var(--accent);font-weight:500}
+</style>
+</head>
+<body>
+  <div class="enter-veil" id="enterVeil"></div>
+  <div class="exit-veil" id="exitVeil"></div>
+  <div class="exitnote" id="exitNote">merging back to the main line &rarr;</div>
+
+  <div class="mark"><b>shariski</b>.com</div>
+  <a class="backline" href="../shariski-rail-journey.html?stop=2">&larr; <b>main line</b></a>
+  <div class="corner"><b>stop 02 · keys</b><br/>a side world · type or scroll</div>
+
+  <div class="wrap" id="wrap">
+    <div class="cab" id="cab">
+      <canvas id="cv"></canvas>
+      <div class="vig"></div>
+      <div class="uiscrim"></div>
+      <div class="stations" id="stations"></div>
+
+      <div class="typeui" id="typeui">
+        <div class="prompt" id="prompt">
+          <div class="goal" id="goal">find F by feel</div>
+          <div class="text" id="ptext"></div>
+        </div>
+        <div class="kbwrap" id="kb"></div>
+      </div>
+
+      <div class="hud">typing · <span class="v" id="wpm">0</span> wpm</div>
+      <div class="meter" id="meter"></div>
+      <div class="cue" id="cue"><span>type &nbsp;·&nbsp; or scroll</span></div>
+    </div>
+    <div class="fallback" id="fallback"></div>
+  </div>
+
+  <button class="mergeback" id="mergeback">nice. <b>merge back to the main line</b> &rarr;</button>
+
+  <script src="../rail/engine.js"></script>
+  <script>
+    // each step is a sub-stop of keys: gradual mastery, riding the same rail
+    const STATIONS = [
+      { era:'keys · 01', ln:'Peek, then feel for F.',     cue:'left index · home row', target:'f j f j',              goal:'find F by feel',        kb:0.95 },
+      { era:'keys · 02', ln:'Home row, eyes closed.',     cue:'no peeking',            target:'a s d f',              goal:'home row',              kb:0.68 },
+      { era:'keys · 03', ln:'Your first whole word.',     cue:'one clean word',        target:'kerf',                 goal:'~25 wpm',               kb:0.48 },
+      { era:'keys · 04', ln:'A phrase — speed climbs.',   cue:'keep it flowing',       target:'think in keys',        goal:'~50 wpm',               kb:0.30 },
+      { era:'keys · 05', ln:'Thinking while typing.',     cue:'don\u2019t look down',  target:'thinking while typing', goal:'80 wpm & beyond',       kb:0.15 }
+    ];
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const meter=document.getElementById('meter');
+    STATIONS.forEach(()=>{ const s=document.createElement('span'); s.className='seg'; meter.appendChild(s); });
+    const segs=[...meter.children];
+    const goalEl=document.getElementById('goal'), ptextEl=document.getElementById('ptext'),
+          kbEl=document.getElementById('kb'), wpmEl=document.getElementById('wpm'), promptEl=document.getElementById('prompt');
+
+    setTimeout(()=>{ document.getElementById('enterVeil').classList.add('off'); }, 80);
+
+    // ---- build the on-screen keyboard ----
+    const rows=['qwertyuiop','asdfghjkl;','zxcvbnm,./'];
+    const keyEls={};
+    rows.forEach(r=>{
+      const row=document.createElement('div'); row.className='kbrow';
+      for(const ch of r){
+        const k=document.createElement('div'); k.className='key'+((ch==='f'||ch==='j')?' bump':'');
+        k.textContent=ch===';'?';':ch.toUpperCase(); keyEls[ch]=k; row.appendChild(k);
+      }
+      kbEl.appendChild(row);
+    });
+    const spaceRow=document.createElement('div'); spaceRow.className='kbrow';
+    const space=document.createElement('div'); space.className='key space'; space.textContent='space';
+    keyEls[' ']=space; spaceRow.appendChild(space); kbEl.appendChild(spaceRow);
+
+    // ---- underwater? no — a warm keys world drawn into the engine canvas ----
+    function makeKeysEnv(){
+      const caps=[]; const L='ASDFJKLQWERTYUIOPZXCVBNM';
+      for(let i=0;i<20;i++) caps.push({nx:Math.random(),ny:Math.random(),s:14+Math.random()*26,sp:0.3+Math.random()*0.6,ph:Math.random()*6.28,ch:L[(Math.random()*L.length)|0],rot:(Math.random()-0.5)*0.4});
+      const rr=(c,x,y,w,h,r)=>{c.beginPath();c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);c.arcTo(x+w,y+h,x,y+h,r);c.arcTo(x,y+h,x,y,r);c.arcTo(x,y,x+w,y,r);c.closePath();};
+      return function(env){
+        const {ctx,W,H,time,cur,N}=env;
+        const prog=Math.min(1,N>1?cur/(N-1):0);
+        const g=ctx.createLinearGradient(0,0,0,H);
+        g.addColorStop(0,'#22180c');g.addColorStop(0.5,'#160e07');g.addColorStop(1,'#0c0804');
+        ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+        const cg=ctx.createRadialGradient(W/2,H*0.4,0,W/2,H*0.4,Math.max(W,H)*0.6);
+        cg.addColorStop(0,'rgba(255,170,90,'+(0.09+prog*0.07).toFixed(3)+')');cg.addColorStop(1,'rgba(255,170,90,0)');
+        ctx.fillStyle=cg;ctx.fillRect(0,0,W,H);
+        ctx.textAlign='center';ctx.textBaseline='middle';
+        for(const c of caps){
+          let y=(((c.ny - time*c.sp*0.015)%1)+1)%1*H;
+          const x=c.nx*W+Math.sin(time*0.3+c.ph)*10, s=c.s*(0.85+0.3*Math.sin(time*0.5+c.ph));
+          ctx.save();ctx.translate(x,y);ctx.rotate(c.rot+Math.sin(time*0.2+c.ph)*0.05);
+          ctx.globalAlpha=0.09+0.05*Math.sin(time*0.7+c.ph);
+          ctx.fillStyle='rgb(235,222,200)';rr(ctx,-s/2,-s/2,s,s,s*0.2);ctx.fill();
+          ctx.globalAlpha=0.55;ctx.fillStyle='rgb(20,13,6)';ctx.font='600 '+(s*0.5).toFixed(0)+'px IBM Plex Mono, monospace';
+          ctx.fillText(c.ch,0,1);
+          ctx.restore();
+        }
+        ctx.globalAlpha=1;
+        const vg=ctx.createRadialGradient(W/2,H*0.44,H*0.2,W/2,H*0.5,H*0.92);
+        vg.addColorStop(0,'rgba(8,5,2,0)');vg.addColorStop(1,'rgba(8,5,2,0.55)');
+        ctx.fillStyle=vg;ctx.fillRect(0,0,W,H);
+      };
+    }
+
+    // ---- typing game wired to the sub-stops ----
+    let stageIdx=0, target='', matched=0, wpmStart=0, done=false;
+    function render(){
+      const dn=target.slice(0,matched), rest=target.slice(matched);
+      ptextEl.innerHTML='<span class="done">'+esc(dn)+'</span><span class="caret">|</span><span class="rest">'+esc(rest)+'</span>';
+    }
+    function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/ /g,'\u00b7'); }
+    function clearKeyStates(){ for(const k in keyEls) keyEls[k].classList.remove('next'); }
+    function highlightNext(){
+      clearKeyStates();
+      const ch=target[matched]; if(ch && keyEls[ch]) keyEls[ch].classList.add('next');
+    }
+    function setupStage(i){
+      const s=STATIONS[i]; if(!s) return;
+      stageIdx=i; target=s.target; matched=0; done=false; wpmStart=0;
+      goalEl.textContent=s.goal; wpmEl.textContent='0';
+      kbEl.style.opacity=s.kb;
+      segs.forEach((seg,j)=>seg.classList.toggle('on', j<=i));
+      render(); highlightNext();
+    }
+    function updateWpm(){
+      if(!wpmStart) return;
+      const mins=(performance.now()-wpmStart)/60000, w=mins>0?Math.round((matched/5)/mins):0;
+      wpmEl.textContent=Math.min(240,w);
+    }
+    function flash(ch,cls){ const k=keyEls[ch]; if(!k) return; k.classList.add(cls); setTimeout(()=>k.classList.remove(cls),160); }
+    function onKey(e){
+      if(done) return;
+      let ch=e.key;
+      if(ch==='Backspace'){ if(matched>0){matched--; render(); highlightNext();} e.preventDefault(); return; }
+      if(ch.length!==1) return;
+      const expected=target[matched];
+      if(expected!=null && ch.toLowerCase()===expected.toLowerCase()){
+        if(matched===0) wpmStart=performance.now();
+        matched++; flash(expected,'hit'); updateWpm(); render(); highlightNext();
+        if(matched>=target.length) complete();
+        e.preventDefault();
+      } else {
+        promptEl.classList.add('shake'); setTimeout(()=>promptEl.classList.remove('shake'),260);
+        flash(ch.toLowerCase(),'wrong');
+        if(ch===' ') e.preventDefault();
+      }
+    }
+    function complete(){
+      done=true; clearKeyStates(); promptEl.classList.add('cleared');
+      if(stageIdx>=STATIONS.length-1){
+        // reached the end — celebrate, then let the user choose to head back (no auto-merge)
+        document.getElementById('mergeback').classList.add('show');
+        const cue=document.getElementById('cue'); if(cue) cue.style.opacity=0;
+      }
+      else { setTimeout(()=>{ promptEl.classList.remove('cleared'); if(window.RAIL) RAIL.goTo(stageIdx+1); }, 800); }
+    }
+    addEventListener('keydown', onKey);
+
+    function onStop(info){
+      if(!info) return;
+      setupStage(info.index);
+      // surface the manual return once you settle on the final stop
+      const last = info.index >= STATIONS.length-1;
+      document.getElementById('mergeback').classList.toggle('show', last);
+      const cue=document.getElementById('cue'); if(cue) cue.style.opacity = last ? 0 : '';
+    }
+
+    RAIL.applyConfig({ world:'keys' });
+    RAIL.init({ stations: STATIONS, branches:false, drawEnv: makeKeysEnv(), onStop: onStop });
+    if (reduce) setupStage(0);
+
+    // ---- return to the main line: only when the user chooses (no auto-merge) ----
+    // The final stop rests in focus (so you can finish typing). Merge happens when
+    // you keep scrolling PAST it, or tap the explicit control.
+    let exiting=false, over=0;
+    function leaveToMainLine(){
+      if(exiting) return; exiting=true;
+      document.getElementById('exitNote').classList.add('on');
+      document.getElementById('exitVeil').classList.add('on');
+      setTimeout(()=>{ location.href='../shariski-rail-journey.html?stop=3'; }, 1150);
+    }
+    document.getElementById('mergeback').addEventListener('click', leaveToMainLine);
+    function atEnd(){ return (innerHeight + window.scrollY) >= (document.body.scrollHeight - 4); }
+    addEventListener('wheel', (e)=>{
+      if(exiting) return;
+      if(atEnd() && e.deltaY>0){ over+=e.deltaY; document.getElementById('exitNote').classList.add('on');
+        if(over>240) leaveToMainLine(); }
+      else { over=0; if(!atEnd()) document.getElementById('exitNote').classList.remove('on'); }
+    }, {passive:true});
+    let touchY=null;
+    addEventListener('touchstart', (e)=>{ touchY=e.touches[0].clientY; }, {passive:true});
+    addEventListener('touchmove', (e)=>{
+      if(exiting||touchY==null) return;
+      const dy=touchY-e.touches[0].clientY; touchY=e.touches[0].clientY;
+      if(atEnd() && dy>0){ over+=dy*1.4; document.getElementById('exitNote').classList.add('on');
+        if(over>180) leaveToMainLine(); }
+    }, {passive:true});
+  </script>
+</body>
+</html>

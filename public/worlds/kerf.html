@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>shariski.com — kerf</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300..800&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  /* same engine + design system as the main line; only the world differs */
+  :root{
+    --ink:#eef2f3; --dim:#8a98a0; --accent:#e8643c;
+    --display:'Bricolage Grotesque',system-ui,sans-serif;
+    --mono:'IBM Plex Mono',ui-monospace,monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%}
+  body{background:#11161a;color:var(--ink);font-family:var(--display);
+    -webkit-font-smoothing:antialiased;overflow-x:hidden}
+
+  .mark{position:fixed;top:18px;left:20px;z-index:120;font-family:var(--mono);font-size:11px;
+    letter-spacing:.18em;text-transform:uppercase;color:var(--dim)}
+  .mark b{color:var(--ink);font-weight:500}
+  .corner{position:fixed;top:18px;right:20px;font-family:var(--mono);font-size:11px;letter-spacing:.04em;
+    color:var(--dim);z-index:120;text-align:right;line-height:1.6}
+  .corner b{color:var(--accent);font-weight:500}
+  .backline{position:fixed;top:42px;left:20px;z-index:120;font-family:var(--mono);font-size:11px;
+    letter-spacing:.1em;color:var(--dim);text-decoration:none}
+  .backline:hover{color:var(--accent)}
+  .backline b{color:var(--ink);font-weight:500}
+
+  .wrap{position:relative;height:560vh}
+  .cab{position:sticky;top:0;height:100vh;overflow:hidden;background:#11161a}
+  canvas{position:absolute;inset:0;z-index:2}
+  .vig{position:absolute;inset:0;z-index:3;pointer-events:none;
+    background:radial-gradient(circle at 50% 42%,transparent 46%,rgba(8,11,14,.62) 100%)}
+  .uiscrim{position:absolute;left:0;right:0;bottom:0;height:46%;z-index:7;pointer-events:none;
+    background:linear-gradient(transparent,rgba(8,11,14,.72))}
+
+  .stations{position:absolute;inset:0;z-index:5}
+  .st{position:absolute;left:0;top:0;width:min(86vw,920px);text-align:center;
+    transform-origin:50% 50%;will-change:transform,opacity,filter}
+  .st .idx{font-family:var(--mono);font-size:11px;letter-spacing:.34em;color:var(--dim);margin-bottom:12px;opacity:0;transition:opacity .35s ease}
+  .st .era{font-family:var(--mono);font-size:14px;letter-spacing:.2em;text-transform:uppercase;color:var(--accent);margin-bottom:16px}
+  .st .ln{font-size:clamp(24px,3.8vw,46px);line-height:1.06;letter-spacing:-.03em;
+    font-variation-settings:'opsz' 96,'wght' 720;text-shadow:0 2px 30px rgba(8,11,14,.9);text-wrap:balance}
+  .st .enter{margin-top:16px;font-family:var(--mono);font-size:12px;letter-spacing:.2em;text-transform:uppercase;
+    color:var(--dim);opacity:0;transition:opacity .4s ease}
+  .st.is-focus .idx{opacity:.85}
+  .st.is-focus .enter{opacity:1}
+
+  /* ---- the split keyboard (the world's hero) + the glowing kerf cut ---- */
+  .kbsplit{position:absolute;left:50%;bottom:72px;transform:translateX(-50%);z-index:8;
+    display:flex;align-items:flex-start;gap:var(--gap,40px);transition:gap .7s cubic-bezier(.4,0,.2,1)}
+  .half{display:flex;gap:7px;position:relative}
+  .half.left{transform:rotate(-7deg)}
+  .half.right{transform:rotate(7deg)}
+  .col{display:flex;flex-direction:column;gap:7px}
+  .cap{width:clamp(19px,3.2vw,31px);height:clamp(19px,3.2vw,31px);border-radius:6px;
+    border:1px solid rgba(210,225,232,.18);background:rgba(210,225,232,.05);
+    transition:border-color .3s,background .3s,box-shadow .3s}
+  .cap.lit{border-color:var(--accent);box-shadow:0 0 12px rgba(232,100,60,.5);background:rgba(232,100,60,.14)}
+  .cap.err{border-color:#e0563a;background:rgba(224,86,58,.2);animation:capflick .45s ease}
+  @keyframes capflick{0%,100%{transform:translateY(0)}50%{transform:translateY(-2px)}}
+  .thumbs{position:absolute;bottom:-32px;display:flex;gap:6px}
+  .half.left .thumbs{right:4px;transform:rotate(18deg);transform-origin:top right}
+  .half.right .thumbs{left:4px;transform:rotate(-18deg);transform-origin:top left}
+  .kerfcut{width:2px;align-self:center;height:128px;border-radius:2px;
+    background:linear-gradient(transparent,var(--accent),transparent);
+    box-shadow:0 0 20px var(--accent);opacity:0;transition:opacity .7s}
+  .kbsplit[data-stage="0"]{--gap:24px}
+  .kbsplit[data-stage="1"]{--gap:98px}
+  .kbsplit[data-stage="2"]{--gap:62px}
+  .kbsplit[data-stage="3"]{--gap:62px}
+  .kbsplit[data-stage="4"]{--gap:62px}
+  .kbsplit[data-stage="2"] .kerfcut,
+  .kbsplit[data-stage="3"] .kerfcut,
+  .kbsplit[data-stage="4"] .kerfcut{opacity:1}
+
+  /* product CTA — this is also a showcase */
+  .cta{position:absolute;left:50%;bottom:26px;transform:translateX(-50%);z-index:9;
+    font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);
+    text-decoration:none;border:1px solid rgba(232,100,60,.4);border-radius:999px;padding:8px 16px;transition:.25s}
+  .cta:hover{color:var(--accent);border-color:var(--accent);box-shadow:0 0 18px rgba(232,100,60,.3)}
+  .cta b{color:var(--accent);font-weight:500}
+
+  .hud{position:absolute;left:22px;bottom:20px;z-index:30;font-family:var(--mono);font-size:12px;letter-spacing:.08em;color:var(--dim)}
+  .hud .v{color:var(--ink)}
+  .meter{position:absolute;right:22px;bottom:20px;z-index:30;display:flex;gap:5px;align-items:center}
+  .meter .seg{width:14px;height:3px;border-radius:2px;background:rgba(210,225,232,.18)}
+  .meter .seg.on{background:var(--accent)}
+
+  .fallback{display:none;padding:96px clamp(28px,7vw,64px);max-width:860px}
+  .fallback .row{padding:24px 0;border-top:1px solid rgba(210,225,232,.12)}
+  .fallback .era{font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--accent);margin-bottom:8px}
+  .fallback .ln{font-size:clamp(22px,3vw,32px);font-variation-settings:'opsz' 70,'wght' 640}
+  .fallback .cta{position:static;display:inline-block;transform:none;margin-top:28px}
+  body.reduced .wrap{height:auto}
+  body.reduced .cab{position:relative;height:100vh}
+  body.reduced .stations,body.reduced .hud,body.reduced .meter,body.reduced .kbsplit,body.reduced .cta{display:none}
+  body.reduced .fallback{display:block}
+
+  .enter-veil{position:fixed;inset:0;z-index:200;background:#11161a;opacity:1;pointer-events:none;transition:opacity 1.2s ease}
+  .enter-veil.off{opacity:0}
+  .exit-veil{position:fixed;inset:0;z-index:200;background:#04050e;opacity:0;pointer-events:none;transition:opacity 1s ease}
+  .exit-veil.on{opacity:1;pointer-events:auto}
+  .exitnote{position:fixed;left:50%;bottom:30px;transform:translateX(-50%);z-index:210;text-align:center;
+    font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim);
+    opacity:0;transition:opacity .5s}
+  .exitnote.on{opacity:1}
+
+  /* manual return — top-centre so it clears the keyboard + product CTA at the bottom */
+  .mergeback{position:fixed;left:50%;top:74px;transform:translateX(-50%) translateY(-8px);z-index:210;
+    opacity:0;pointer-events:none;cursor:pointer;font-family:var(--mono);font-size:11px;letter-spacing:.18em;
+    text-transform:uppercase;color:var(--dim);background:rgba(238,242,243,.05);
+    border:1px solid rgba(238,242,243,.2);border-radius:999px;padding:11px 20px;
+    transition:opacity .5s ease,transform .5s ease,color .25s,border-color .25s,box-shadow .25s}
+  .mergeback.show{opacity:1;pointer-events:auto;transform:translateX(-50%)}
+  .mergeback:hover{color:var(--accent);border-color:var(--accent);box-shadow:0 0 18px rgba(232,100,60,.25)}
+  .mergeback b{color:var(--accent);font-weight:500}
+</style>
+</head>
+<body>
+  <div class="enter-veil" id="enterVeil"></div>
+  <div class="exit-veil" id="exitVeil"></div>
+  <div class="exitnote" id="exitNote">merging back to the main line &rarr;</div>
+
+  <div class="mark"><b>shariski</b>.com</div>
+  <a class="backline" href="../shariski-rail-journey.html?stop=3">&larr; <b>main line</b></a>
+  <div class="corner"><b>stop 03 · kerf</b><br/>a side world · scroll</div>
+
+  <div class="wrap" id="wrap">
+    <div class="cab" id="cab">
+      <canvas id="cv"></canvas>
+      <div class="vig"></div>
+      <div class="uiscrim"></div>
+      <div class="stations" id="stations"></div>
+
+      <div class="kbsplit" id="kbsplit" data-stage="0">
+        <div class="half left" id="halfL"></div>
+        <div class="kerfcut"></div>
+        <div class="half right" id="halfR"></div>
+      </div>
+
+      <a class="cta" href="https://typekerf.com" target="_blank" rel="noopener">the product &nbsp;·&nbsp; <b>typekerf.com</b> &#8599;</a>
+      <div class="hud">kerf · <span class="v" id="tag">the leap</span></div>
+      <div class="meter" id="meter"></div>
+    </div>
+    <div class="fallback" id="fallback"></div>
+  </div>
+
+  <button class="mergeback" id="mergeback"><b>merge back to the main line</b> &rarr;</button>
+
+  <script src="../rail/engine.js"></script>
+  <script>
+    // grounded in github.com/shariski/kerf — "accuracy first", two-phase, columnar-aware
+    const STATIONS = [
+      { era:'kerf · 01', ln:'I went split — Sofle, then Lily58.',                 cue:'qwerty \u2192 columnar',                        tag:'the leap' },
+      { era:'kerf · 02', ln:'Relearning to type, from zero.',                      cue:'inner columns · thumbs · cross-hand reaches',   tag:'the wall' },
+      { era:'kerf · 03', ln:'No tool understood the transition. So I forged kerf.', cue:'a structured transition program',              tag:'forged' },
+      { era:'kerf · 04', ln:'Accuracy first. No pass / fail.',                     cue:'slowing down to stay accurate is the win',      tag:'accuracy' },
+      { era:'kerf · 05', ln:'Adaptive. Columnar-aware. Two-phase.',                cue:'the engine targets your weakest column',        tag:'the engine' }
+    ];
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const meter=document.getElementById('meter');
+    STATIONS.forEach(()=>{ const s=document.createElement('span'); s.className='seg'; meter.appendChild(s); });
+    const segs=[...meter.children];
+    const tagEl=document.getElementById('tag');
+
+    setTimeout(()=>{ document.getElementById('enterVeil').classList.add('off'); }, 80);
+
+    // ---- build the split keyboard (5 columns × 3 rows + 2-key thumb cluster, columnar stagger) ----
+    const stagger=[16,7,0,5,20];
+    const cols=[]; const allCaps=[];
+    function buildHalf(el, mirror){
+      const order = mirror ? [4,3,2,1,0] : [0,1,2,3,4];
+      order.forEach(ci=>{
+        const col=document.createElement('div'); col.className='col'; col.style.marginTop=stagger[ci]+'px';
+        const arr=[];
+        for(let r=0;r<3;r++){ const c=document.createElement('div'); c.className='cap'; col.appendChild(c); arr.push(c); allCaps.push(c); }
+        el.appendChild(col); cols.push(arr);
+      });
+      const th=document.createElement('div'); th.className='thumbs';
+      for(let t=0;t<2;t++){ const c=document.createElement('div'); c.className='cap'; th.appendChild(c); allCaps.push(c); }
+      el.appendChild(th);
+    }
+    buildHalf(document.getElementById('halfL'), false);
+    buildHalf(document.getElementById('halfR'), true);
+    const kbsplit=document.getElementById('kbsplit');
+
+    // ---- kerf world environment: a cool, precise workshop with a hot cut ----
+    function makeKerfEnv(){
+      const sparks=[]; for(let i=0;i<16;i++) sparks.push({nx:0.5+(Math.random()-0.5)*0.5,ph:Math.random(),sp:0.14+Math.random()*0.22,r:0.6+Math.random()*1.6});
+      return function(env){
+        const {ctx,W,H,time,cur,N}=env;
+        const prog=Math.min(1,N>1?cur/(N-1):0);
+        const g=ctx.createLinearGradient(0,0,0,H);
+        g.addColorStop(0,'#1b2226');g.addColorStop(0.5,'#12181b');g.addColorStop(1,'#0a0e11');
+        ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+        const cg=ctx.createRadialGradient(W/2,H*0.46,0,W/2,H*0.46,Math.max(W,H)*0.5);
+        cg.addColorStop(0,'rgba(232,100,60,'+(0.07+prog*0.08).toFixed(3)+')');cg.addColorStop(1,'rgba(232,100,60,0)');
+        ctx.fillStyle=cg;ctx.fillRect(0,0,W,H);
+        ctx.strokeStyle='rgba(210,225,232,0.05)';ctx.lineWidth=1;
+        for(let i=1;i<8;i++){const y=H*(i/8);ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W*0.035,y);ctx.moveTo(W,y);ctx.lineTo(W*0.965,y);ctx.stroke();}
+        ctx.save();ctx.globalCompositeOperation='lighter';
+        for(const s of sparks){
+          const f=((time*s.sp+s.ph)%1+1)%1, y=H*0.6-f*H*0.5, x=s.nx*W+Math.sin(time*0.8+s.ph*6.28)*10, a=(1-f)*0.5;
+          ctx.fillStyle='rgba(255,150,90,'+a.toFixed(3)+')';ctx.beginPath();ctx.arc(x,y,s.r,0,6.28);ctx.fill();
+        }
+        ctx.restore();
+        const vg=ctx.createRadialGradient(W/2,H*0.44,H*0.2,W/2,H*0.5,H*0.92);
+        vg.addColorStop(0,'rgba(8,11,14,0)');vg.addColorStop(1,'rgba(8,11,14,0.55)');
+        ctx.fillStyle=vg;ctx.fillRect(0,0,W,H);
+      };
+    }
+
+    // ---- per sub-stop: the split keyboard tells the story ----
+    let fx=null;
+    function clearCaps(){ allCaps.forEach(c=>c.classList.remove('lit','err')); }
+    function setStage(i){
+      const s=STATIONS[i]; if(!s) return;
+      kbsplit.dataset.stage=i; tagEl.textContent=s.tag;
+      segs.forEach((seg,j)=>seg.classList.toggle('on', j<=i));
+      clearCaps(); if(fx){clearInterval(fx);fx=null;}
+      if(i===1){ // the wall — errors flicker as you fight the new layout
+        fx=setInterval(()=>{ clearCaps(); for(let k=0;k<3;k++) allCaps[(Math.random()*allCaps.length)|0].classList.add('err'); }, 440);
+      } else if(i===3){ // accuracy first — calm, steady, every key settles lit
+        allCaps.forEach((c,idx)=>setTimeout(()=>c.classList.add('lit'), idx*16));
+      } else if(i===4){ // adaptive — the engine targets your weakest column, one at a time
+        let step=0; fx=setInterval(()=>{ clearCaps(); cols[step%cols.length].forEach(c=>c.classList.add('lit')); step++; }, 520);
+      }
+    }
+    function onStop(info){
+      if(info){ setStage(info.index);
+        document.getElementById('mergeback').classList.toggle('show', info.index >= STATIONS.length-1);
+      }
+    }
+
+    RAIL.applyConfig({ world:'kerf' });
+    RAIL.init({ stations: STATIONS, branches:false, drawEnv: makeKerfEnv(), onStop: onStop });
+    if (reduce){ setStage(0); document.getElementById('fallback').insertAdjacentHTML('beforeend',
+      '<a class="cta" href="https://typekerf.com" target="_blank" rel="noopener">the product · <b>typekerf.com</b> &#8599;</a>'); }
+
+    // ---- return to the main line: only when the user chooses (no auto-merge) ----
+    // The final stop rests in focus. Merge happens when you keep scrolling PAST it,
+    // or tap the explicit control.
+    let exiting=false, over=0;
+    function leaveToMainLine(){
+      if(exiting) return; exiting=true;
+      document.getElementById('exitNote').classList.add('on');
+      document.getElementById('exitVeil').classList.add('on');
+      setTimeout(()=>{ location.href='../shariski-rail-journey.html?stop=4'; }, 1150);
+    }
+    document.getElementById('mergeback').addEventListener('click', leaveToMainLine);
+    function atEnd(){ return (innerHeight + window.scrollY) >= (document.body.scrollHeight - 4); }
+    addEventListener('wheel', (e)=>{
+      if(exiting) return;
+      if(atEnd() && e.deltaY>0){ over+=e.deltaY; document.getElementById('exitNote').classList.add('on');
+        if(over>240) leaveToMainLine(); }
+      else { over=0; if(!atEnd()) document.getElementById('exitNote').classList.remove('on'); }
+    }, {passive:true});
+    let touchY=null;
+    addEventListener('touchstart', (e)=>{ touchY=e.touches[0].clientY; }, {passive:true});
+    addEventListener('touchmove', (e)=>{
+      if(exiting||touchY==null) return;
+      const dy=touchY-e.touches[0].clientY; touchY=e.touches[0].clientY;
+      if(atEnd() && dy>0){ over+=dy*1.4; document.getElementById('exitNote').classList.add('on');
+        if(over>180) leaveToMainLine(); }
+    }, {passive:true});
+  </script>
+</body>
+</html>
