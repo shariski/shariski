@@ -299,10 +299,19 @@
   function mount() {
     document.body.appendChild(btn); syncUI();
     if (enabled) {
+      // Sound was on last visit, but autoplay policy needs a fresh user gesture to
+      // start audio. Resume on the first interaction — but IGNORE taps on the toggle
+      // itself, so the toggle's own handler stays in charge. (Otherwise a single tap
+      // both arms-on via this listener AND toggles it, cancelling out to silence.)
       enabled = false; syncUI();
-      const arm = () => { enable(); rm(); };
-      const rm = () => { ['pointerdown', 'keydown', 'wheel', 'touchstart'].forEach(t => removeEventListener(t, arm)); };
-      ['pointerdown', 'keydown', 'wheel', 'touchstart'].forEach(t => addEventListener(t, arm, { once: true, passive: true }));
+      const EVTS = ['pointerdown', 'keydown', 'wheel', 'touchstart'];
+      const rm = () => EVTS.forEach(t => removeEventListener(t, arm));
+      const arm = (e) => {
+        if (e && e.target && e.target.closest && e.target.closest('.rs-toggle')) return;
+        rm(); enable();
+      };
+      EVTS.forEach(t => addEventListener(t, arm, { passive: true }));
+      btn.addEventListener('click', rm, { once: true });
     }
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', mount);
