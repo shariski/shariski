@@ -294,7 +294,7 @@
     <div class="cab" id="cab">
       <canvas id="cv"></canvas>
       <div class="vig"></div>
-      <div class="stations" id="stations" data-comment-anchor="d524ae3679-div"></div>
+      <div class="stations" id="stations"></div>
       <div class="cue"><span class="bar"></span><span>drive</span></div>
     </div>
     <div class="fallback" id="fallback"></div>
@@ -414,7 +414,10 @@
       prog = Math.max(0, Math.min(1, p));
       const side = stopInfo ? stopInfo.side : 1;
       lever.style.transform = 'translateX(-50%) rotate(' + (side * 62 * prog).toFixed(1) + 'deg)';
-      lever.classList.toggle('armed', prog > 0.55);
+      const nowArmed = prog > 0.55;
+      lever.classList.toggle('armed', nowArmed);
+      if (nowArmed !== setLever._armed){ setLever._armed = nowArmed;
+        document.dispatchEvent(new CustomEvent('rail:arm', { detail:{ armed: nowArmed } })); }
       if (window.RAIL) RAIL.setArm(prog);
     }
     function showSwitch(info){
@@ -447,6 +450,7 @@
     }
     function enterWorld(info){
       if (locked) return; locked = true;
+      document.dispatchEvent(new CustomEvent('rail:dive'));
       setLever(1);
       const s = info.station, side = info.side;
       cab.style.transform = 'scale(2.05) translateX(' + (-side*16) + '%) translateY(8%) rotate(' + (side*9) + 'deg)';
@@ -477,7 +481,8 @@
       window.scrollTo(0, (STATIONS.length-1>0 ? s/(STATIONS.length-1) : 0) * denom);
     }
 
-    RAIL.init({ stations: STATIONS, onStationClick: openDetail, onStop: showSwitch });
+    RAIL.init({ stations: STATIONS, onStationClick: openDetail,
+      onStop: function(info){ document.dispatchEvent(new CustomEvent('rail:stop', { detail: info })); showSwitch(info); } });
 
     // ===== who is driving — the platform beat + reach-out (single content source) =====
     const PROFILE = {
@@ -492,6 +497,7 @@
       { l:'GitHub',   v:'github.com/shariski',         href:'https://github.com/shariski' },
       { l:'X',        v:'@shariskiii',                 href:'https://x.com/shariskiii' },
       { l:'LinkedIn', v:'in/shariski',                 href:'https://www.linkedin.com/in/shariski' },
+      { l:'CV',       v:'download · PDF',              href:'/cv/falahudin-halim-shariski-cv.pdf' },
       { l:'Phone',    v:'+62 898-8373-548',            href:'tel:+628988373548' }
     ];
     function contactRows(){
@@ -557,7 +563,7 @@
     let platStyle = 'bp';
     function setPlatformStyle(s){ platStyle = s || 'bp'; platInner.innerHTML = platformHTML(platStyle); }
     function showPlatform(){ if (!platform.classList.contains('off')) return; platform.classList.remove('off'); document.body.classList.add('boarding'); }
-    function hidePlatform(){ if (platform.classList.contains('off')) return; platform.classList.add('off'); document.body.classList.remove('boarding'); hailEl.classList.add('show'); }
+    function hidePlatform(){ if (platform.classList.contains('off')) return; platform.classList.add('off'); document.body.classList.remove('boarding'); hailEl.classList.add('show'); document.dispatchEvent(new CustomEvent('rail:depart')); }
     function previewPlatform(){ window.scrollTo({ top:0, behavior:'smooth' }); showPlatform(); }
     setPlatformStyle('bp');
 
@@ -574,7 +580,7 @@
 
     // ----- reach-out popover -----
     const cpop = document.getElementById('contactpop');
-    function openContact(){ document.getElementById('cc-list').innerHTML = contactRows(); cpop.classList.add('on'); }
+    function openContact(){ document.getElementById('cc-list').innerHTML = contactRows(); cpop.classList.add('on'); document.dispatchEvent(new CustomEvent('rail:contact')); }
     function closeContact(){ cpop.classList.remove('on'); }
     hailEl.addEventListener('click', openContact);
     document.getElementById('cc-close').addEventListener('click', closeContact);
@@ -589,5 +595,6 @@
   </script>
 
   <script src="rail/network.js"></script>
+  <script src="rail/sound.js"></script>
 </body>
 </html>
