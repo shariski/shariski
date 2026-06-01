@@ -60,6 +60,9 @@
 
   function build() {
     if (started) return;
+    // iOS: route through the media "playback" session so audio is NOT silenced by the
+    // hardware ring/mute switch — the rider explicitly opted in. (Safari 16.4+; no-op elsewhere.)
+    try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}
     const AC = window.AudioContext || window.webkitAudioContext;
     ctx = new AC();
     noiseBuf = makeNoise(2, false);
