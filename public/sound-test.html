@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>sound diagnostic — shariski.com</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#04050e;color:#e9edf8;font-family:ui-monospace,Menlo,monospace;
+    -webkit-font-smoothing:antialiased;padding:24px;line-height:1.5;min-height:100vh}
+  h1{font-size:18px;letter-spacing:.04em;margin-bottom:6px}
+  p{color:#9aa3bf;font-size:13px;margin-bottom:18px}
+  .hint{color:#88a6ff}
+  button{display:block;width:100%;margin:10px 0;padding:18px;font:inherit;font-size:15px;
+    text-align:left;background:rgba(136,166,255,.08);color:#e9edf8;
+    border:1px solid rgba(136,166,255,.3);border-radius:12px;cursor:pointer}
+  button:active{background:rgba(136,166,255,.2)}
+  pre{margin-top:20px;padding:14px;background:#0a0c16;border:1px solid rgba(255,255,255,.12);
+    border-radius:10px;font-size:13px;white-space:pre-wrap;color:#aeb6d4}
+  .log{margin-top:12px;font-size:12px;color:#7c86a6}
+</style>
+</head>
+<body>
+  <h1>sound diagnostic</h1>
+  <p><span class="hint">Press the volume-UP button</span> on the side of your phone while testing. Tap each button and note which ones you hear.</p>
+
+  <button id="b660">▶ 1. Beep — 660 Hz (clear mid tone)</button>
+  <button id="b120">▶ 2. Beep — 120 Hz (deep bass)</button>
+  <button id="bnoise">▶ 3. White-noise burst</button>
+  <button id="bclick">▶ 4. Keyboard-style click (like the site)</button>
+
+  <pre id="status">tap any button to start the audio engine…</pre>
+  <div class="log" id="log"></div>
+
+<script>
+  var ctx, statusEl = document.getElementById('status'), logEl = document.getElementById('log');
+  var logs = [];
+  function log(m){ logs.unshift(m); logEl.textContent = logs.slice(0,6).join('\n'); }
+
+  function render(){
+    var as = navigator.audioSession;
+    statusEl.textContent =
+      'audioSession API : ' + (as ? ('yes  (type=' + as.type + ')') : 'NOT available') + '\n' +
+      'AudioContext     : ' + (window.AudioContext ? 'AudioContext' : (window.webkitAudioContext ? 'webkitAudioContext' : 'NONE')) + '\n' +
+      'ctx.state        : ' + (ctx ? ctx.state : '(not created)') + '\n' +
+      'sampleRate       : ' + (ctx ? ctx.sampleRate : '-') + '\n' +
+      'output channels  : ' + (ctx ? ctx.destination.maxChannelCount : '-');
+  }
+
+  function ensureCtx(){
+    if (!ctx){
+      try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; }
+      catch(e){ log('audioSession set error: ' + e); }
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC){ log('NO Web Audio support'); render(); return; }
+      ctx = new AC();
+      log('created context, state=' + ctx.state);
+    }
+    if (ctx.state === 'suspended'){
+      ctx.resume().then(function(){ log('resume() ok, state=' + ctx.state); render(); })
+                  .catch(function(e){ log('resume() FAILED: ' + e); render(); });
+    }
+    render();
+  }
+
+  function tone(freq, dur){
+    ensureCtx(); if (!ctx) return;
+    var t = ctx.currentTime;
+    var o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = freq;
+    var g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.35, t + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g).connect(ctx.destination);
+    o.start(t); o.stop(t + dur + 0.05);
+    log('played ' + freq + 'Hz, state=' + ctx.state);
+  }
+
+  function burst(highpass){
+    ensureCtx(); if (!ctx) return;
+    var t = ctx.currentTime, n = Math.floor(ctx.sampleRate * 0.35);
+    var buf = ctx.createBuffer(1, n, ctx.sampleRate), d = buf.getChannelData(0);
+    for (var i=0;i<n;i++) d[i] = Math.random()*2-1;
+    var s = ctx.createBufferSource(); s.buffer = buf;
+    var node = s, g = ctx.createGain(); g.gain.value = 0.3;
+    if (highpass){ var hp = ctx.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=2600; s.connect(hp); hp.connect(g); }
+    else { s.connect(g); }
+    g.connect(ctx.destination); s.start();
+    log('played ' + (highpass?'click':'noise') + ', state=' + ctx.state);
+  }
+
+  document.getElementById('b660').addEventListener('click', function(){ tone(660, 0.8); });
+  document.getElementById('b120').addEventListener('click', function(){ tone(120, 0.8); });
+  document.getElementById('bnoise').addEventListener('click', function(){ burst(false); });
+  document.getElementById('bclick').addEventListener('click', function(){ burst(true); });
+  render();
+</script>
+</body>
+</html>
