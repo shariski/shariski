@@ -8,11 +8,11 @@
 
   var LINES = [
     { id:'origin', label:'the origin line', sub:'how I got here — learning, from zero',
-      href:'shariski-rail-journey.html', color:'#88a6ff', stops:5, ready:true },
+      href:'index.html', color:'#88a6ff', stops:5, ready:true },
     { id:'works',  label:'the works line',  sub:'professional experience + case studies',
-      href:'shariski-works-line.html',  color:'#6fc8bd', stops:4, ready:true },
+      href:'works.html',  color:'#6fc8bd', stops:4, ready:true },
     { id:'depot',  label:'the depot',       sub:'recent builds — shipped fast, agent-assisted',
-      href:'shariski-depot.html', color:'#b98cff', stops:4, ready:true }
+      href:'depot.html', color:'#b98cff', stops:4, ready:true }
   ];
 
   // resolve hrefs relative to page depth (worlds/* live one level down — not used there,

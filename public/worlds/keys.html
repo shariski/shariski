@@ -127,7 +127,7 @@
   <div class="exitnote" id="exitNote">merging back to the main line &rarr;</div>
 
   <div class="mark"><b>shariski</b>.com</div>
-  <a class="backline" href="../shariski-rail-journey.html?stop=2">&larr; <b>main line</b></a>
+  <a class="backline" href="../index.html?stop=2">&larr; <b>main line</b></a>
   <div class="corner"><b>stop 02 · keys</b><br/>a side world · type or scroll</div>
 
   <div class="wrap" id="wrap">
@@ -296,7 +296,7 @@
       if(exiting) return; exiting=true;
       document.getElementById('exitNote').classList.add('on');
       document.getElementById('exitVeil').classList.add('on');
-      setTimeout(()=>{ location.href='../shariski-rail-journey.html?stop=3'; }, 1150);
+      setTimeout(()=>{ location.href='../index.html?stop=3'; }, 1150);
     }
     document.getElementById('mergeback').addEventListener('click', leaveToMainLine);
     function atEnd(){ return (innerHeight + window.scrollY) >= (document.body.scrollHeight - 4); }

@@ -110,7 +110,7 @@
   <div class="exitnote" id="exitNote">leaving for the first stop &rarr;</div>
 
   <div class="mark"><b>shariski</b>.com</div>
-  <a class="backline" href="../shariski-rail-journey.html?stop=0">&larr; <b>main line</b></a>
+  <a class="backline" href="../index.html?stop=0">&larr; <b>main line</b></a>
   <div class="corner"><b>departure · teardown</b><br/>an operating system for learning hard things</div>
 
   <div class="wrap" id="wrap">
@@ -216,7 +216,7 @@
       if(exiting) return; exiting=true;
       document.getElementById('exitNote').classList.add('on');
       document.getElementById('exitVeil').classList.add('on');
-      setTimeout(()=>{ location.href='../shariski-rail-journey.html?stop=1'; }, 1150);
+      setTimeout(()=>{ location.href='../index.html?stop=1'; }, 1150);
     }
     document.getElementById('mergeback').addEventListener('click', leaveToMainLine);
     function atEnd(){ return (innerHeight+window.scrollY) >= (document.body.scrollHeight-4); }
