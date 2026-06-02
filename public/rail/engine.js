@@ -593,7 +593,14 @@
       if (t && t.matches && t.matches('input,textarea,select,[contenteditable]')) return;
       if (opts.canNavigate && !opts.canNavigate()) return;
       const k = e.key;
-      if (k === 'ArrowUp' || (letterKeys && (k === 'k' || k === 'K'))) { e.preventDefault(); stepStop(1); }
+      if (k === 'ArrowUp' || (letterKeys && (k === 'k' || k === 'K'))) {
+        e.preventDefault();
+        // forward off the last stop of a world merges back to the line (same as scrolling
+        // past the end); the main lines have no #mergeback, so it simply clamps.
+        const mb = document.getElementById('mergeback');
+        if (mb && Math.round(cur) >= N() - 1) mb.click();
+        else stepStop(1);
+      }
       else if (k === 'ArrowDown' || (letterKeys && (k === 'j' || k === 'J'))) { e.preventDefault(); stepStop(-1); }
       else if (k === 'ArrowLeft' || (letterKeys && (k === 'h' || k === 'H'))) {
         const bl = document.querySelector('.backline');
