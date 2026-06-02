@@ -67,7 +67,7 @@ jobs:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
-          source: "Dockerfile,public"
+          source: "Dockerfile,public,default.conf"
           target: ${{ env.STAGING_DIR }}/
           rm: true
 
@@ -88,11 +88,11 @@ jobs:
             cd "$STACK_DIR"
 
             # Swap the freshly-uploaded build context into place. The old
-            # Dockerfile + public/ are removed cleanly so stale assets
-            # (renamed pages, removed images) don't linger in the next
-            # image. docker-compose.yml itself stays put (not uploaded).
-            rm -rf Dockerfile public
-            mv "$STAGING_DIR/Dockerfile" "$STAGING_DIR/public" ./
+            # Dockerfile + public/ + default.conf are removed cleanly so
+            # stale assets (renamed pages, removed images) don't linger in
+            # the next image. docker-compose.yml stays put (not uploaded).
+            rm -rf Dockerfile public default.conf
+            mv "$STAGING_DIR/Dockerfile" "$STAGING_DIR/public" "$STAGING_DIR/default.conf" ./
             rmdir "$STAGING_DIR" 2>/dev/null || true
 
             # Rebuild the service's image and recreate its container.
