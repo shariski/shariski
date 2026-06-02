@@ -82,10 +82,12 @@
   .panel .pera{margin-top:40px;font-family:var(--mono);font-size:13px;letter-spacing:.2em;text-transform:uppercase;color:var(--accent)}
   .panel .ptitle{margin-top:14px;font-size:clamp(28px,4vw,42px);line-height:1.06;letter-spacing:-.03em;
     font-variation-settings:'opsz' 80,'wght' 700;text-wrap:balance}
-  .panel .slot{margin-top:30px;height:200px;border-radius:10px;border:1px solid rgba(136,166,255,.16);
+  .panel .slot{margin-top:30px;aspect-ratio:1/1;width:100%;max-height:min(52vh,440px);overflow:hidden;
+    position:relative;border-radius:10px;border:1px solid rgba(136,166,255,.16);
     background-image:repeating-linear-gradient(135deg,rgba(136,166,255,.06) 0 10px,transparent 10px 20px);
     display:grid;place-items:center;font-family:var(--mono);font-size:11px;letter-spacing:.16em;
     text-transform:uppercase;color:var(--dim)}
+  .panel .slot video,.panel .slot img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;background:#000}
   .panel .pbody{margin-top:24px;color:var(--ink);opacity:.78;font-size:16px;line-height:1.7;max-width:42ch}
   .panel .pnote{margin-top:18px;font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:var(--dim);
     border-top:1px dashed rgba(255,255,255,.12);padding-top:16px}
@@ -344,22 +346,26 @@
         worldName:'teardown', world:'worlds/departure.html', veil:'#060912',
         title:'Take it apart. Make it efficient. Repeat.',
         body:'The instinct that runs under everything else — pull a thing open, find the waste, put it back leaner. This is the engine of the whole line.',
-        note:'placeholder — drop the origin story for this stop here.' },
+        media:'media/departure.mp4', poster:'media/departure.jpg',
+        note:'field note: the instinct that predates the résumé.' },
       { era:'stop 01 · water',  ln:'I learned to swim from nothing.',
         worldName:'water', world:'worlds/water.html', veil:'#0a2536',
         title:'I learned to swim from nothing.',
         body:'Starting from zero, in over my head, and figuring out how to stay afloat by moving.',
-        note:'placeholder — add the project / story for “water”.' },
+        media:'media/water.mp4', poster:'media/water.jpg',
+        note:'field note: self-taught, from zero — by refusing to sink.' },
       { era:'stop 02 · keys',   ln:'Then I rebuilt how I type.',
         worldName:'keys', world:'worlds/keys.html', veil:'#1a1208',
         title:'Then I rebuilt how I type.',
         body:'Tearing down a daily habit to its mechanics and reassembling it on purpose.',
-        note:'placeholder — add the layout / keyboard story for “keys”.' },
+        media:'media/keys.mp4', poster:'media/keys.jpg',
+        note:'field note: rebuilt my muscle memory from scratch.' },
       { era:'stop 03 · kerf',   ln:'So I built a typing trainer.',
         worldName:'kerf', world:'worlds/kerf.html', veil:'#11161a',
         title:'So I built a typing trainer.',
         body:'Turning the obsession into a tool other people can use — kerf.',
-        note:'placeholder — add the kerf case study + link here.' },
+        media:'media/kerf.mp4', poster:'media/kerf.jpg',
+        note:'field note: the obsession, shipped — typekerf.com.' },
       { era:'now',              ln:'Still on the line. Still iterating.',
         title:'Still on the line.',
         body:'The line doesn’t terminate — new stops keep arriving down the rail. If something here resonated, or you’re building in the same direction, flag me down. I read everything.',
@@ -369,7 +375,42 @@
     // ----- detail panel wiring -----
     const scrim = document.getElementById('scrim');
     const panel = document.getElementById('panel');
+    const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
     let openIdx = -1;
+    // tear the clip down (not just pause) so nothing decodes in the background —
+    // mobile browsers cap concurrent <video>s and clicking through stops would pile them up.
+    function clearSlotMedia(){
+      const slot = document.getElementById('p-slot');
+      const v = slot.querySelector('video');
+      if (v){ try { v.pause(); } catch(e){} v.removeAttribute('src'); try { v.load(); } catch(e){} }
+      slot.innerHTML = '';
+    }
+    // square cover-crop frame: muted-loop autoplay video, else a still poster, else collapse.
+    function setSlotMedia(s){
+      const slot = document.getElementById('p-slot');
+      clearSlotMedia();
+      if (s.contacts){ slot.style.display = 'none'; return; }
+      if (s.media && !reduceMotion){
+        const v = document.createElement('video');
+        v.muted = true; v.loop = true; v.autoplay = true; v.playsInline = true;
+        v.setAttribute('playsinline',''); v.setAttribute('muted',''); v.preload = 'metadata';
+        if (s.poster) v.poster = s.poster;
+        v.addEventListener('error', () => showPoster(s));   // missing/broken clip → poster or collapse
+        v.src = s.media;
+        slot.style.display = 'block'; slot.appendChild(v);
+        const p = v.play(); if (p && p.catch) p.catch(() => {});  // ignore autoplay-policy rejections
+        return;
+      }
+      showPoster(s);   // reduced-motion users (and media-less stops) get the still instead
+    }
+    function showPoster(s){
+      const slot = document.getElementById('p-slot');
+      clearSlotMedia();
+      if (!s.poster){ slot.style.display = 'none'; return; }   // nothing to show → hide the box
+      const img = document.createElement('img'); img.src = s.poster; img.alt = s.title || s.ln || '';
+      img.addEventListener('error', () => { slot.style.display = 'none'; });
+      slot.style.display = 'block'; slot.appendChild(img);
+    }
     function fill(i){
       const s = STATIONS[i];
       document.getElementById('p-idx').textContent = String(i+1).padStart(2,'0')+' / '+String(STATIONS.length).padStart(2,'0');
@@ -377,12 +418,10 @@
       document.getElementById('p-title').textContent = s.title || s.ln;
       document.getElementById('p-body').textContent = s.body || '';
       document.getElementById('p-note').textContent = s.note || '';
-      const slot = document.getElementById('p-slot'), pc = document.getElementById('p-contacts');
-      if (s.contacts){
-        slot.style.display = 'none'; pc.style.display = 'flex'; pc.innerHTML = contactRows();
-      } else {
-        slot.style.display = 'grid'; pc.style.display = 'none'; pc.innerHTML = '';
-      }
+      const pc = document.getElementById('p-contacts');
+      setSlotMedia(s);
+      if (s.contacts){ pc.style.display = 'flex'; pc.innerHTML = contactRows(); }
+      else { pc.style.display = 'none'; pc.innerHTML = ''; }
       document.getElementById('p-prev').disabled = i <= 0;
       document.getElementById('p-next').disabled = i >= STATIONS.length-1;
     }
@@ -391,7 +430,7 @@
       scrim.classList.add('on'); panel.classList.add('on'); panel.setAttribute('aria-hidden','false');
     }
     function closeDetail(){
-      openIdx = -1;
+      openIdx = -1; clearSlotMedia();
       scrim.classList.remove('on'); panel.classList.remove('on'); panel.setAttribute('aria-hidden','true');
     }
     scrim.addEventListener('click', closeDetail);
@@ -502,6 +541,24 @@
       window.scrollTo(0, (STATIONS.length-1>0 ? s/(STATIONS.length-1) : 0) * denom);
       if (params.has('explored')) explored.add(s);
     }
+
+    // ----- boarding pass: forward (↑ / k / ↵) pulls the train out ONTO departure (stop 0) -----
+    //   the platform is an overlay sitting on top of departure. without this, the shared engine's
+    //   stepStop(1) reads cur≈0 and jumps straight to water, skipping departure entirely.
+    //   registered BEFORE RAIL.init so it runs first; stopImmediatePropagation() keeps the engine
+    //   (whose keydown is added inside RAIL.init) from also stepping.
+    addEventListener('keydown', function(e){
+      const pf = document.getElementById('platform');
+      if (!pf || pf.classList.contains('off')) return;   // only while the boarding pass is showing
+      if (openIdx >= 0) return;                           // a detail panel owns the keys
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      const t = e.target;
+      if (t && t.matches && t.matches('input,textarea,select,[contenteditable]')) return;
+      if (e.key === 'ArrowUp' || e.key === 'k' || e.key === 'K' || e.key === 'Enter'){
+        e.preventDefault(); e.stopImmediatePropagation();
+        pullOut();
+      }
+    });
 
     RAIL.init({ stations: STATIONS, onStationClick: openDetail, canNavigate: () => openIdx < 0,
       onStop: function(info){ document.dispatchEvent(new CustomEvent('rail:stop', { detail: info })); showSwitch(info); } });
