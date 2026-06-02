@@ -401,8 +401,10 @@
     addEventListener('keydown', (e) => {
       if (openIdx < 0) return;
       if (e.key === 'Escape') closeDetail();
-      if (e.key === 'ArrowLeft' && openIdx>0){ openDetail(openIdx-1); RAIL.goTo(openIdx); }
-      if (e.key === 'ArrowRight' && openIdx<STATIONS.length-1){ openDetail(openIdx+1); RAIL.goTo(openIdx); }
+      const prev = e.key === 'ArrowLeft' || e.key === 'h' || e.key === 'H';
+      const next = e.key === 'ArrowRight' || e.key === 'l' || e.key === 'L';
+      if (prev && openIdx>0){ openDetail(openIdx-1); RAIL.goTo(openIdx); }
+      if (next && openIdx<STATIONS.length-1){ openDetail(openIdx+1); RAIL.goTo(openIdx); }
     });
 
     // ----- switch lever → dive into a stop's world -----
@@ -429,8 +431,11 @@
       if (!info || !info.station.worldName){ sw.classList.remove('on'); if(window.RAIL) RAIL.setArm(0); return; }
       const s = info.station, side = info.side;
       if (s.world){
-        swLabel.innerHTML = 'branch &#8600; <b>' + s.worldName + '</b> world';
-        swHint.textContent = 'throw the lever ' + (side > 0 ? 'right' : 'left') + ' — dive deeper';
+        const seen = explored.has(info.index);
+        swLabel.innerHTML = seen
+          ? '&#10003; <b>' + s.worldName + '</b> &middot; explored'
+          : 'branch &#8600; <b>' + s.worldName + '</b> world';
+        swHint.textContent = 'throw the lever ' + (side > 0 ? 'right' : 'left') + (seen ? ' — revisit' : ' — dive deeper');
         sw.classList.remove('soon');
       } else {
         swLabel.innerHTML = '<b>' + s.worldName + '</b> world — coming soon';
@@ -472,21 +477,52 @@
     addEventListener('pointerup', ()=>{ if(!dragging) return; dragging=false; release(); });
     addEventListener('keydown', (e)=>{
       if (openIdx >= 0 || !stopInfo) return;
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
       const pf = document.getElementById('platform');
       if (pf && !pf.classList.contains('off')) return;
-      if (e.key === 'Enter' && stopInfo.station.world){ enterWorld(stopInfo); }
+      // → / l / Enter throws the switch and dives into this stop's world (forward = up
+      // travels the line; right = into the branch). ← / h has nothing to exit here.
+      const dive = e.key === 'Enter' || e.key === 'ArrowRight' || e.key === 'l' || e.key === 'L';
+      if (dive && stopInfo.station.world){ e.preventDefault(); enterWorld(stopInfo); }
     });
 
     // ----- boot: optionally resume at a stop after returning from a world -----
+    //   ?stop=N scrolls you to a stop; &explored=1 marks that stop's world as
+    //   already dived (set by a world's "back to the line" exit, not the abort link),
+    //   so the switch there reads "explored · revisit" instead of inviting a fresh dive.
     const params = new URLSearchParams(location.search);
+    const explored = new Set();
     if (params.has('stop')){
       const s = Math.max(0, Math.min(STATIONS.length-1, parseInt(params.get('stop'),10) || 0));
       const denom = document.getElementById('wrap').offsetHeight - innerHeight;
       window.scrollTo(0, (STATIONS.length-1>0 ? s/(STATIONS.length-1) : 0) * denom);
+      if (params.has('explored')) explored.add(s);
     }
 
-    RAIL.init({ stations: STATIONS, onStationClick: openDetail,
+    RAIL.init({ stations: STATIONS, onStationClick: openDetail, canNavigate: () => openIdx < 0,
       onStop: function(info){ document.dispatchEvent(new CustomEvent('rail:stop', { detail: info })); showSwitch(info); } });
+
+    // ----- keyboard hint: a quiet, self-fading nudge that you can drive this with keys -----
+    (function(){
+      const st = document.createElement('style');
+      st.textContent = '#kbhint{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:240;'
+        + 'font:500 11px/1 "IBM Plex Mono",ui-monospace,monospace;letter-spacing:.06em;color:var(--dim);'
+        + 'background:rgba(0,0,0,.34);border:1px solid rgba(255,255,255,.09);border-radius:999px;'
+        + 'padding:7px 14px;display:flex;gap:6px;align-items:center;backdrop-filter:blur(6px);'
+        + 'opacity:0;animation:kbhintin .6s ease .9s forwards;transition:opacity .5s ease;pointer-events:none}'
+        + '#kbhint.gone{opacity:0!important}#kbhint b{color:var(--ink);font-weight:600}#kbhint i{opacity:.45;font-style:normal}'
+        + '@keyframes kbhintin{to{opacity:.9}}@media (prefers-reduced-motion:reduce){#kbhint{display:none}}';
+      document.head.appendChild(st);
+      const hint = document.createElement('div');
+      hint.id = 'kbhint';
+      hint.innerHTML = '<b>&uarr;</b><b>&darr;</b><i>/</i><b>k</b><b>j</b> travel <i>&middot;</i> <b>&rarr;</b> dive in';
+      document.body.appendChild(hint);
+      const hide = () => hint.classList.add('gone');
+      setTimeout(hide, 6500);
+      addEventListener('keydown', hide, { once:true });
+      addEventListener('wheel', hide, { once:true, passive:true });
+      addEventListener('touchstart', hide, { once:true, passive:true });
+    })();
 
     // ===== who is driving — the platform beat + reach-out (single content source) =====
     const PROFILE = {

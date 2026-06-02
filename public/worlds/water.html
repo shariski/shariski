@@ -161,7 +161,7 @@
 <body>
   <div class="enter-veil" id="enterVeil"></div>
   <div class="exit-veil" id="exitVeil"></div>
-  <div class="exitnote" id="exitNote">merging back to the main line &rarr;</div>
+  <div class="exitnote" id="exitNote">surfacing to the line &uarr;</div>
 
   <div class="mark"><b>shariski</b>.com</div>
   <a class="backline" href="../index.html?stop=1">&larr; <b>main line</b></a>
@@ -222,7 +222,7 @@
     <div class="fallback" id="fallback"></div>
   </div>
 
-  <button class="mergeback" id="mergeback">surface &amp; <b>merge back to the main line</b> &rarr;</button>
+  <button class="mergeback" id="mergeback">surface &amp; <b>back to the line</b> &uarr;</button>
 
   <script src="../rail/engine.js"></script>
   <script>
@@ -320,7 +320,7 @@
       if(exiting) return; exiting=true;
       document.getElementById('exitNote').classList.add('on');
       document.getElementById('exitVeil').classList.add('on');
-      setTimeout(()=>{ location.href='../index.html?stop=2'; }, 1100);
+      setTimeout(()=>{ location.href='../index.html?stop=1&explored=1'; }, 1100);
     }
     document.getElementById('mergeback').addEventListener('click', leaveToMainLine);
     function atEnd(){ return (innerHeight + window.scrollY) >= (document.body.scrollHeight - 4); }

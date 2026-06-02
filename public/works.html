@@ -302,8 +302,10 @@
     addEventListener('keydown', function(e){
       if (openIdx < 0) return;
       if (e.key === 'Escape') closeDetail();
-      if (e.key === 'ArrowLeft' && openIdx>0){ openDetail(openIdx-1); RAIL.goTo(openIdx); }
-      if (e.key === 'ArrowRight' && openIdx<STATIONS.length-1){ openDetail(openIdx+1); RAIL.goTo(openIdx); }
+      var prev = e.key === 'ArrowLeft' || e.key === 'h' || e.key === 'H';
+      var next = e.key === 'ArrowRight' || e.key === 'l' || e.key === 'L';
+      if (prev && openIdx>0){ openDetail(openIdx-1); RAIL.goTo(openIdx); }
+      if (next && openIdx<STATIONS.length-1){ openDetail(openIdx+1); RAIL.goTo(openIdx); }
     });
 
     // ----- switch lever → dive into a stop's case-study world -----
@@ -369,7 +371,9 @@
     addEventListener('pointerup', function(){ if(!dragging) return; dragging=false; release(); });
     addEventListener('keydown', function(e){
       if (openIdx >= 0 || !stopInfo) return;
-      if (e.key === 'Enter' && stopInfo.station.world){ enterWorld(stopInfo); }
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      var dive = e.key === 'Enter' || e.key === 'ArrowRight' || e.key === 'l' || e.key === 'L';
+      if (dive && stopInfo.station.world){ e.preventDefault(); enterWorld(stopInfo); }
     });
 
     // ----- boot: resume at a stop after returning from a world -----
@@ -381,7 +385,7 @@
     }
 
     RAIL.applyConfig({ world:'dawn' });
-    RAIL.init({ stations: STATIONS, onStationClick: openDetail, onStop: showSwitch });
+    RAIL.init({ stations: STATIONS, onStationClick: openDetail, canNavigate: () => openIdx < 0, onStop: showSwitch });
 
     setTimeout(function(){ document.getElementById('enterVeil').classList.add('off'); }, 90);
   </script>

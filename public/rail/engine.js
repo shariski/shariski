@@ -528,6 +528,11 @@
     window.scrollTo({ top: y, behavior: 'smooth' });
   }
 
+  // step one stop along the line. forward (+1) = up-arrow / k — the 3D/game
+  // locomotion convention. scroll is left untouched (down = forward), so keys
+  // "drive the train" while scroll "browses the journey".
+  function stepStop(d) { goTo(Math.max(0, Math.min(N() - 1, Math.round(cur) + d))); }
+
   function init(opts) {
     STATIONS = opts.stations;
     onStationClick = opts.onStationClick || null;
@@ -575,6 +580,27 @@
     addEventListener('scroll', setTarget, { passive: true });
     addEventListener('resize', () => { resize(); setTarget(); });
     document.addEventListener('visibilitychange', () => { paused = document.hidden; });
+
+    // ---- keyboard: drive the line ----
+    //   forward = up (↑ / k), back = down (↓ / j) — the 3D/game locomotion convention.
+    //   ← / h resurfaces to the line wherever a .backline exists (worlds); no-op on the
+    //   main lines that have none. letterKeys:false (typing worlds) frees h/j/k/l for
+    //   typing while arrows keep navigating.
+    const letterKeys = opts.letterKeys !== false;
+    addEventListener('keydown', (e) => {
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      const t = e.target;
+      if (t && t.matches && t.matches('input,textarea,select,[contenteditable]')) return;
+      if (opts.canNavigate && !opts.canNavigate()) return;
+      const k = e.key;
+      if (k === 'ArrowUp' || (letterKeys && (k === 'k' || k === 'K'))) { e.preventDefault(); stepStop(1); }
+      else if (k === 'ArrowDown' || (letterKeys && (k === 'j' || k === 'J'))) { e.preventDefault(); stepStop(-1); }
+      else if (k === 'ArrowLeft' || (letterKeys && (k === 'h' || k === 'H'))) {
+        const bl = document.querySelector('.backline');
+        if (bl) { e.preventDefault(); location.href = bl.getAttribute('href'); }
+      }
+    });
+
     last = performance.now();
     raf = requestAnimationFrame(loop);
   }
@@ -601,5 +627,5 @@
 
   function setArm(p) { armProgress = Math.max(0, Math.min(1, p)); }
 
-  window.RAIL = { init, applyConfig, goTo, setArm, WORLDS, CFG };
+  window.RAIL = { init, applyConfig, goTo, stepStop, current: () => Math.round(cur), setArm, WORLDS, CFG };
 })();

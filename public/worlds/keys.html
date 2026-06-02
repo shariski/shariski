@@ -134,7 +134,7 @@
 <body>
   <div class="enter-veil" id="enterVeil"></div>
   <div class="exit-veil" id="exitVeil"></div>
-  <div class="exitnote" id="exitNote">merging back to the main line &rarr;</div>
+  <div class="exitnote" id="exitNote">back to the line &larr;</div>
 
   <div class="mark"><b>shariski</b>.com</div>
   <a class="backline" href="../index.html?stop=2">&larr; <b>main line</b></a>
@@ -162,7 +162,7 @@
     <div class="fallback" id="fallback"></div>
   </div>
 
-  <button class="mergeback" id="mergeback">nice. <b>merge back to the main line</b> &rarr;</button>
+  <button class="mergeback" id="mergeback">nice. <b>back to the line</b> &larr;</button>
 
   <script src="../rail/engine.js"></script>
   <script>
@@ -295,7 +295,8 @@
     }
 
     RAIL.applyConfig({ world:'keys' });
-    RAIL.init({ stations: STATIONS, branches:false, drawEnv: makeKeysEnv(), onStop: onStop });
+    // letterKeys:false — h/j/k/l are typed in the drills, so only arrows navigate here.
+    RAIL.init({ stations: STATIONS, branches:false, letterKeys:false, drawEnv: makeKeysEnv(), onStop: onStop });
     if (reduce) setupStage(0);
 
     // ---- return to the main line: only when the user chooses (no auto-merge) ----
@@ -306,7 +307,7 @@
       if(exiting) return; exiting=true;
       document.getElementById('exitNote').classList.add('on');
       document.getElementById('exitVeil').classList.add('on');
-      setTimeout(()=>{ location.href='../index.html?stop=3'; }, 1150);
+      setTimeout(()=>{ location.href='../index.html?stop=2&explored=1'; }, 1150);
     }
     document.getElementById('mergeback').addEventListener('click', leaveToMainLine);
     function atEnd(){ return (innerHeight + window.scrollY) >= (document.body.scrollHeight - 4); }
