@@ -336,7 +336,7 @@
 
 
   <script>window.SHARISKI_LINE = 'origin';</script>
-  <script src="rail/engine.js"></script>
+  <script src="rail/engine.js?v=2"></script>
   <script>
     // ----- journey content (lines are yours; detail bodies are placeholders to fill) -----
     const STATIONS = [
@@ -480,9 +480,11 @@
       if (e.ctrlKey || e.metaKey || e.altKey) return;
       const pf = document.getElementById('platform');
       if (pf && !pf.classList.contains('off')) return;
-      // → / l / Enter throws the switch and dives into this stop's world (forward = up
-      // travels the line; right = into the branch). ← / h has nothing to exit here.
-      const dive = e.key === 'Enter' || e.key === 'ArrowRight' || e.key === 'l' || e.key === 'L';
+      // dive toward the branch: stops alternate sides, so you enter with the key that
+      // matches the lever throw — ← / h for a left branch, → / l for a right one. Enter always.
+      const right = e.key === 'ArrowRight' || e.key === 'l' || e.key === 'L';
+      const left  = e.key === 'ArrowLeft'  || e.key === 'h' || e.key === 'H';
+      const dive = e.key === 'Enter' || (stopInfo.side > 0 ? right : left);
       if (dive && stopInfo.station.world){ e.preventDefault(); enterWorld(stopInfo); }
     });
 

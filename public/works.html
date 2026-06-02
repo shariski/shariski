@@ -207,7 +207,7 @@
 
 
   <script>window.SHARISKI_LINE = 'works';</script>
-  <script src="rail/engine.js"></script>
+  <script src="rail/engine.js?v=2"></script>
   <script>
     // ----- the works line: career as a chronological run of stops (grounded in the CV) -----
     const STATIONS = [
@@ -372,7 +372,9 @@
     addEventListener('keydown', function(e){
       if (openIdx >= 0 || !stopInfo) return;
       if (e.ctrlKey || e.metaKey || e.altKey) return;
-      var dive = e.key === 'Enter' || e.key === 'ArrowRight' || e.key === 'l' || e.key === 'L';
+      var right = e.key === 'ArrowRight' || e.key === 'l' || e.key === 'L';
+      var left  = e.key === 'ArrowLeft'  || e.key === 'h' || e.key === 'H';
+      var dive = e.key === 'Enter' || (stopInfo.side > 0 ? right : left);
       if (dive && stopInfo.station.world){ e.preventDefault(); enterWorld(stopInfo); }
     });
 
